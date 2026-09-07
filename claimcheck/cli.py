@@ -8,6 +8,8 @@ Options:
   --text                 print plain-text findings instead of the platform's hook JSON
   --strict-exit          exit 1 when there are unbacked claims (for CI / pre-commit)
 
+Set CLAIMCHECK_LOG=/path/to/file.jsonl to also append every flagged turn there.
+
 Without --strict-exit the exit code is always 0 — a hook must never wedge a session.
 Internal errors are reported on stderr and the turn proceeds.
 """
@@ -18,7 +20,7 @@ import argparse
 import json
 import sys
 
-from . import report, run
+from . import log, report, run
 from .adapters import ADAPTERS
 from .config import load_config
 
@@ -52,6 +54,7 @@ def main(argv=None) -> int:
             print(empty)
             return 0
 
+        log.append(turn, findings)
         text = report.format_findings(findings)
         if args.text or not hasattr(adapter, "to_hook_output"):
             print(text)

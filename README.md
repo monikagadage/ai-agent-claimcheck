@@ -92,6 +92,16 @@ Optional `.claimcheck.json` in your project root:
 | `ignore` | `[]` | checks to skip: `tests`, `build`, `edits`, `agreements` |
 | `test_patterns` / `build_patterns` | `[]` | extra regexes for project-specific commands |
 
+## Keep a findings log
+
+Set the `CLAIMCHECK_LOG` env var to a file path and every flagged turn is appended there
+as one JSON line — timestamp, project, the final message, each finding. Useful for
+reviewing false positives and tuning the claim patterns. In a hook command:
+
+```
+CLAIMCHECK_LOG="$HOME/.claude/claimcheck-log.jsonl" python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hook.py"
+```
+
 ## Use it in CI / pre-commit
 
 The CLI reads a platform payload on stdin and exits non-zero (with `--strict-exit`) when

@@ -270,6 +270,31 @@ class TestCli(TmpMixin):
         code, out = self.run_cli({}, raw_stdin="not json at all {{{")
         self.assertEqual((code, out), (0, "{}"))
 
+    def test_claimcheck_log_env_var(self):
+        import os
+
+        logfile = self.dir / "log.jsonl"
+        os.environ["CLAIMCHECK_LOG"] = str(logfile)
+        self.addCleanup(os.environ.pop, "CLAIMCHECK_LOG", None)
+        t = Transcript().user("x").say("done")
+        self.run_cli(self.payload("All tests pass.", t))
+        lines = logfile.read_text().splitlines()
+        self.assertEqual(len(lines), 1)
+        rec = json.loads(lines[0])
+        self.assertEqual(rec["findings"][0]["kind"], "tests")
+        self.assertIn("no test command ran", rec["findings"][0]["reason"])
+        self.assertEqual(rec["final_message"], "All tests pass.")
+
+    def test_claimcheck_log_not_written_when_clean(self):
+        import os
+
+        logfile = self.dir / "log.jsonl"
+        os.environ["CLAIMCHECK_LOG"] = str(logfile)
+        self.addCleanup(os.environ.pop, "CLAIMCHECK_LOG", None)
+        t = Transcript().user("x").bash("pytest", "5 passed")
+        self.run_cli(self.payload("All tests pass.", t))
+        self.assertFalse(logfile.exists())
+
 
 # --------------------------------------------------------------------------- adapter parsing
 

@@ -18,6 +18,7 @@ First cut.
 - Ignore claims inside quotes, backtick spans, blockquotes and fenced code — the agent
   discussing, quoting, or illustrating a claim is not making one. Also ignores long
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
+- `CLAIMCHECK_LOG=/path` appends every flagged turn to a JSONL file (dogfood / FP review).
 - Stdlib only, Python 3.9+.
 
 _(Started life as `claude-code-receipts`; renamed `ai-agent-claimcheck` before first release. Python import path stays `claimcheck`.)_
