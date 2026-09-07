@@ -15,6 +15,11 @@ First cut.
 - `.claimcheck.json` config: `strict`, `ignore`, `test_patterns`, `build_patterns`.
 - Transcript parser for the real Claude Code JSONL format (nested `message.content`,
   `is_error` / `Exit code N` for failed commands, sub-agent calls).
+- **Cursor adapter** (`--from cursor`): parses the `stop`-hook payload + agent transcript.
+  Warn mode logs only (Cursor hooks can't show a passive note); strict mode sends a
+  follow-up. Transcript parsing is provisional — undocumented format, parsed defensively.
+- **Generic adapter** (`--from generic`): pipe a small JSON of the turn; works with any agent.
+- Hook shim forwards args, so one script serves every platform.
 - Ignore claims inside quotes, backtick spans, blockquotes and fenced code — the agent
   discussing, quoting, or illustrating a claim is not making one. Also ignores long
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)

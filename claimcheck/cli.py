@@ -4,7 +4,7 @@
     <stop-hook-payload.json> | python -m claimcheck.cli --from claude-code
 
 Options:
-  --from {claude-code}   which agent produced the payload (default: claude-code)
+  --from {claude-code,cursor,generic}   which agent produced the payload
   --text                 print plain-text findings instead of the platform's hook JSON
   --strict-exit          exit 1 when there are unbacked claims (for CI / pre-commit)
 
@@ -56,10 +56,16 @@ def main(argv=None) -> int:
 
         log.append(turn, findings)
         text = report.format_findings(findings)
+
         if args.text or not hasattr(adapter, "to_hook_output"):
             print(text)
         else:
-            print(json.dumps(adapter.to_hook_output(text, block=bool(cfg.get("strict")))))
+            hook_out = adapter.to_hook_output(text, block=bool(cfg.get("strict")))
+            if not hook_out:
+                # the platform's hook can't surface a passive note (e.g. Cursor warn
+                # mode) — put it on stderr so it still shows in the hook log
+                print(text, file=sys.stderr)
+            print(json.dumps(hook_out))
         return 1 if args.strict_exit else 0
 
     except Exception as exc:  # never break the session over a bug in here

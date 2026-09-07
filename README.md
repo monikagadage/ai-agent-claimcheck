@@ -37,11 +37,11 @@ that runs a *fixed* command like `npm test`. `claimcheck` is different: it reads
 
 | Surface | Status |
 | --- | --- |
-| **Claude Code** — CLI, IDE extensions, desktop Code tab | ✅ supported (`Stop`-hook plugin or a `settings.json` hook) |
-| **Cowork** (Claude Desktop) | ⚠️ a user `settings.json` hook does **not** fire here; install as a plugin instead (untested — reports welcome) |
-| Cursor | planned adapter |
-| Codex CLI | planned adapter |
-| Any transcript | the CLI (`python -m claimcheck.cli --from …`) |
+| **Claude Code** — CLI, IDE extensions, desktop Code tab | ✅ `Stop`-hook plugin or `settings.json` hook |
+| **Cursor** | ✅ `stop`-hook adapter (`--from cursor`) — transcript parsing is provisional, verify against a real session |
+| **Cowork** (Claude Desktop) | ⚠️ user `settings.json` hooks don't fire here; try installing as a plugin (untested) |
+| **Any agent** | ✅ `--from generic` — pipe it a small JSON of the turn (no auto-hook) |
+| Codex CLI, VS Code Copilot | planned — Copilot needs a companion extension (no end-of-turn hook API) |
 
 The claim logic and the checks are platform-neutral (`claimcheck/claims.py`,
 `claimcheck/checks.py`). Each platform is one small adapter in `claimcheck/adapters/`.
@@ -62,6 +62,44 @@ Try it without installing:
 git clone https://github.com/monikagadage/ai-agent-claimcheck
 claude --plugin-dir ./ai-agent-claimcheck
 ```
+
+## Install (Cursor)
+
+Clone the repo, then add to `~/.cursor/hooks.json`:
+
+```json
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      { "command": "python3 /abs/path/to/ai-agent-claimcheck/scripts/hook.py --from cursor" }
+    ]
+  }
+}
+```
+
+Cursor's `stop` hook can't show a passive message, so **warn mode writes to the log
+only** — set `CLAIMCHECK_LOG` (see below), or use `"strict": true` in `.claimcheck.json`
+to have it send a follow-up asking the agent to fix or restate.
+
+> The Cursor transcript format isn't documented; the adapter parses it defensively.
+> If it misses commands/edits on your machine, open an issue with a redacted transcript
+> snippet from `~/.cursor/projects/.../agent-transcripts/`.
+
+## Any other agent (`generic`)
+
+Pipe a JSON description of the turn to the CLI:
+
+```bash
+echo '{
+  "final_message": "All tests pass. I updated auth.py.",
+  "user_messages": ["fix the login bug"],
+  "commands": [{"text": "pytest -q", "ok": true, "exit_code": 0}],
+  "edits": [{"path": "src/routes.py"}]
+}' | python -m claimcheck.cli --from generic --text
+```
+
+Wire that into whatever end-of-turn mechanism your agent has.
 
 ## What it checks (v1)
 

@@ -328,5 +328,101 @@ class TestClaudeCodeAdapter(TmpMixin):
         self.assertTrue(turn.observed)
 
 
+# --------------------------------------------------------------------------- generic adapter
+
+
+class TestGenericAdapter(unittest.TestCase):
+    def test_maps_payload_to_turn(self):
+        from claimcheck.adapters.generic import parse
+
+        turn = parse(
+            {
+                "final_message": "All tests pass. I updated auth.py.",
+                "user_messages": ["fix login"],
+                "commands": [{"text": "pytest", "ok": True, "exit_code": 0}],
+                "edits": ["src/routes.py", {"path": "config.toml"}],
+            }
+        )
+        self.assertEqual(turn.source, "generic")
+        self.assertTrue(turn.observed)
+        self.assertEqual(turn.user_messages, ["fix login"])
+        self.assertEqual(turn.commands[0].text, "pytest")
+        self.assertEqual({e.path for e in turn.edits}, {"src/routes.py", "config.toml"})
+
+    def test_generic_via_cli(self):
+        buf, err = io.StringIO(), io.StringIO()
+        old = sys.stdin
+        sys.stdin = io.StringIO(json.dumps({"final_message": "All tests pass.", "commands": []}))
+        try:
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                code = cli_main(["--from", "generic"])
+        finally:
+            sys.stdin = old
+        self.assertEqual(code, 0)
+        self.assertIn("no test command ran", buf.getvalue())
+
+
+# --------------------------------------------------------------------------- cursor adapter
+# transcript format is undocumented; these use a plausible JSONL shape — revisit
+# against a real ~/.cursor/.../agent-transcripts/ file.
+
+
+class TestCursorAdapter(unittest.TestCase):
+    def _payload(self, tmp: Path, lines: list[dict], **kw) -> dict:
+        tp = tmp / "cursor.jsonl"
+        tp.write_text("\n".join(json.dumps(x) for x in lines))
+        return {
+            "hook_event_name": "stop",
+            "workspace_roots": [str(tmp)],
+            "transcript_path": str(tp),
+            "status": "completed",
+            "loop_count": 0,
+            **kw,
+        }
+
+    def test_parse_transcript(self):
+        from claimcheck.adapters.cursor import parse
+
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            payload = self._payload(
+                tmp,
+                [
+                    {"role": "user", "content": "fix the bug"},
+                    {
+                        "role": "assistant",
+                        "content": "running tests",
+                        "tool_calls": [{"name": "shell", "command": "pytest -q"}],
+                    },
+                    {"role": "tool", "content": "5 passed", "tool_call_id": "1"},
+                    {
+                        "role": "assistant",
+                        "content": "All tests pass. I updated auth.py.",
+                        "tool_calls": [{"name": "edit_file", "path": "auth.py"}],
+                    },
+                ],
+            )
+            turn = parse(payload)
+            self.assertEqual(turn.source, "cursor")
+            self.assertEqual(turn.project_dir, str(tmp))
+            self.assertEqual(turn.final_message, "All tests pass. I updated auth.py.")
+            self.assertEqual(turn.user_messages, ["fix the bug"])
+            self.assertEqual(turn.commands[0].text, "pytest -q")
+            self.assertTrue(turn.commands[0].ok)
+            self.assertEqual([e.path for e in turn.edits], ["auth.py"])
+
+    def test_loop_guard(self):
+        from claimcheck.adapters.cursor import already_reprompted
+
+        self.assertTrue(already_reprompted({"loop_count": 2}))
+        self.assertFalse(already_reprompted({"loop_count": 0}))
+
+    def test_hook_output_warn_vs_strict(self):
+        from claimcheck.adapters.cursor import to_hook_output
+
+        self.assertEqual(to_hook_output("msg", block=False), {})
+        self.assertIn("followup_message", to_hook_output("msg", block=True))
+
+
 if __name__ == "__main__":
     unittest.main()
