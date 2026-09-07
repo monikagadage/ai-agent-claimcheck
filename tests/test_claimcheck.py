@@ -85,6 +85,22 @@ class TestClaims(unittest.TestCase):
         cs = extract_claims("As we decided, using Redis for the throttle.")
         self.assertTrue(any(c.kind == "agreement" for c in cs))
 
+    def test_quoted_phrase_is_not_a_claim(self):
+        # the agent discussing / quoting a claim, not making one (first dogfood FP)
+        msg = 'For example: *"I updated payment_service.py and all tests pass"* would be flagged.'
+        self.assertEqual(extract_claims(msg), [])
+
+    def test_blockquote_is_not_a_claim(self):
+        self.assertEqual(extract_claims("> I updated auth.py and the tests pass"), [])
+
+    def test_fenced_code_is_not_a_claim(self):
+        msg = "Output was:\n```\nI updated main.py, all tests pass\n```\nlooks right."
+        self.assertEqual(extract_claims(msg), [])
+
+    def test_backticked_filename_is_still_a_claim(self):
+        cs = extract_claims("I updated `auth.py` for the fix.")
+        self.assertEqual([c.target for c in cs if c.kind == "edit"], ["auth.py"])
+
 
 # --------------------------------------------------------------------------- tests check
 

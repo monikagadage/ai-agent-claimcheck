@@ -15,6 +15,8 @@ First cut.
 - `.claimcheck.json` config: `strict`, `ignore`, `test_patterns`, `build_patterns`.
 - Transcript parser for the real Claude Code JSONL format (nested `message.content`,
   `is_error` / `Exit code N` for failed commands, sub-agent calls).
+- Ignore claims inside quotes, backtick spans, blockquotes and fenced code — the agent
+  discussing or quoting a claim is not making one (first dogfood false positive).
 - Stdlib only, Python 3.9+.
 
 _(Started life as `claude-code-receipts`; renamed `ai-agent-claimcheck` before first release. Python import path stays `claimcheck`.)_

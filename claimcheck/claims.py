@@ -11,6 +11,28 @@ from dataclasses import dataclass
 
 _SENT_SPLIT = re.compile(r"(?<=[.!?\n])\s+|(?<=[;:])\s+")
 
+# Text the agent is *quoting* or *displaying*, not asserting: fenced code, blockquote
+# lines, and quoted phrases. A short backticked/quoted token (`auth.py`, "config") is
+# kept — that's the normal way to name a file in a real claim. Only a quoted span that
+# reads like a sentence fragment (has a space, ≥ 20 chars) is masked out.
+_FENCE = re.compile(r"```.*?```", re.S)
+_BLOCKQUOTE = re.compile(r"^[ \t]*>.*$", re.M)
+_SPAN = re.compile(r"`([^`\n]+)`|\"([^\"\n]+)\"|“([^”\n]+)”")
+
+
+def _mask_quoted(message: str) -> str:
+    message = _FENCE.sub(" ", message)
+    message = _BLOCKQUOTE.sub(" ", message)
+
+    def repl(m: re.Match) -> str:
+        inner = next(g for g in m.groups() if g is not None)
+        if " " in inner.strip() and len(inner) >= 20:
+            return " "
+        return m.group(0)
+
+    return _SPAN.sub(repl, message)
+
+
 TESTS_RE = re.compile(
     r"""(
         \b(all\s+|the\s+)?(unit\s+|integration\s+|e2e\s+)?tests?\b [^.!?\n]{0,50}?
@@ -62,6 +84,7 @@ class Claim:
 def extract_claims(message: str) -> list[Claim]:
     if not message:
         return []
+    message = _mask_quoted(message)
     claims: list[Claim] = []
     sentences = [s.strip() for s in _SENT_SPLIT.split(message) if s.strip()]
     for sent in sentences:
