@@ -18,6 +18,8 @@ First cut.
 - Ignore claims inside quotes, backtick spans, blockquotes and fenced code — the agent
   discussing, quoting, or illustrating a claim is not making one. Also ignores long
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
+- Skip sentences that report on or deny a claim ("it states that... neither happened",
+  "I did not run the tests") — reported speech and negation. (dogfood FP)
 - `CLAIMCHECK_LOG=/path` appends every flagged turn to a JSONL file (dogfood / FP review).
 - Stdlib only, Python 3.9+.
 

@@ -113,6 +113,15 @@ class TestClaims(unittest.TestCase):
         msg = "The fix works (previously I updated auth.py by hand which was error-prone)."
         self.assertEqual(extract_claims(msg), [])
 
+    def test_reported_and_denied_claims_are_not_claims(self):
+        for m in [
+            "It states that I updated database.py and that integration tests pass — neither happened.",
+            "The summary claims that all tests pass, but no test command ran.",
+            "I did not run the tests, though the code looks right.",
+            "I didn't update config.py in the end.",
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
+
 
 # --------------------------------------------------------------------------- tests check
 

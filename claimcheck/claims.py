@@ -27,6 +27,18 @@ _HYPOTHETICAL = re.compile(
     re.I,
 )
 
+# the sentence is *reporting on* or *denying* a claim, not making one
+_REPORTED = re.compile(
+    r"\b(it (?:states|says|claims|asserts|reads)|the (?:message|summary|reply|response|agent|model|note)"
+    r"\s+(?:states|says|claims|asserts)|claims that|asserts that|according to)\b",
+    re.I,
+)
+_DENIED = re.compile(
+    r"\b(neither|none of (?:that|it|this)|didn'?t|did not|was ?n'?t|were ?n'?t|"
+    r"never (?:ran|happened|did)|not actually|no test(?:s| command)? (?:ran|was run))\b",
+    re.I,
+)
+
 
 def _mask_quoted(message: str) -> str:
     message = _FENCE.sub(" ", message)
@@ -107,7 +119,7 @@ def extract_claims(message: str) -> list[Claim]:
     sentences = [s.strip() for s in _SENT_SPLIT.split(message) if s.strip()]
     for sent in sentences:
         low = sent.lower()
-        if _HYPOTHETICAL.search(sent):
+        if _HYPOTHETICAL.search(sent) or _REPORTED.search(sent) or _DENIED.search(sent):
             continue
         if (
             TESTS_RE.search(sent)
