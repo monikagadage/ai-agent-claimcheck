@@ -1,15 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "receipts",
-  "displayName": "receipts",
+  "name": "claimcheck",
+  "displayName": "claimcheck",
   "version": "0.1.0",
   "description": "Checks Claude's end-of-turn claims against what it actually did this session. Flags \"tests pass\" when no test ran, \"I edited X\" when nothing touched X, and invented agreements. Deterministic, no network, no model. Warn-only by default.",
   "author": {
     "name": "Monika Gadage",
     "url": "https://github.com/monikagadage"
   },
-  "homepage": "https://github.com/monikagadage/claude-code-receipts",
-  "repository": "https://github.com/monikagadage/claude-code-receipts",
+  "homepage": "https://github.com/monikagadage/claimcheck",
+  "repository": "https://github.com/monikagadage/claimcheck",
   "license": "MIT",
   "keywords": [
     "verification",
@@ -19,7 +19,7 @@
     "tests",
     "quality",
     "trust",
-    "receipts",
+    "claimcheck",
     "guardrail"
   ],
   "hooks": "./hooks/hooks.json"

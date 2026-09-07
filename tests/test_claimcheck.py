@@ -1,10 +1,12 @@
-"""M0 regression suite for receipts. Stdlib unittest, no deps.
+"""Regression suite for claimcheck. Stdlib unittest, no deps.
 
 python -m unittest discover -s tests -v
 """
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -13,10 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from receipts.checks import run_all_checks
-from receipts.claims import extract_claims
-from receipts.session import Session
-from receipts.verify import build_output
+from claimcheck.adapters.claude_code import parse
+from claimcheck.checks import run_all_checks
+from claimcheck.claims import extract_claims
+from claimcheck.cli import main as cli_main
 from tests._build import Transcript, hook_input
 
 
@@ -26,13 +28,26 @@ class TmpMixin(unittest.TestCase):
         self.dir = Path(self._d.name)
         self.addCleanup(self._d.cleanup)
 
-    def sess(self, final: str, t: Transcript) -> Session:
+    def turn(self, final: str, t: Transcript):
         tp = t.dump(self.dir / "t.jsonl")
-        return Session.from_hook_input(hook_input(final, tp, cwd=str(self.dir)))
+        return parse(hook_input(final, tp, cwd=str(self.dir)))
 
     def findings(self, final: str, t: Transcript):
-        s = self.sess(final, t)
-        return run_all_checks(s, extract_claims(final))
+        return run_all_checks(self.turn(final, t), extract_claims(final))
+
+    def run_cli(self, payload, argv=("--from", "claude-code"), raw_stdin=None):
+        buf, err = io.StringIO(), io.StringIO()
+        old_stdin = sys.stdin
+        sys.stdin = io.StringIO(raw_stdin if raw_stdin is not None else json.dumps(payload))
+        try:
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                code = cli_main(list(argv))
+        finally:
+            sys.stdin = old_stdin
+        return code, buf.getvalue().strip()
+
+    def payload(self, final, t, **kw):
+        return hook_input(final, t.dump(self.dir / "t.jsonl"), cwd=str(self.dir), **kw)
 
 
 # --------------------------------------------------------------------------- claims
@@ -64,8 +79,7 @@ class TestClaims(unittest.TestCase):
 
     def test_edit_claims_capture_path(self):
         cs = extract_claims("I updated `src/auth.py` and created config.toml.")
-        paths = {c.target for c in cs if c.kind == "edit"}
-        self.assertEqual(paths, {"src/auth.py", "config.toml"})
+        self.assertEqual({c.target for c in cs if c.kind == "edit"}, {"src/auth.py", "config.toml"})
 
     def test_agreement_claim(self):
         cs = extract_claims("As we decided, using Redis for the throttle.")
@@ -104,6 +118,10 @@ class TestTestsCheck(TmpMixin):
         t = Transcript().user("fix bug").bash("go test ./...", "ok", sidechain=True)
         self.assertEqual(self.findings("Tests pass.", t), [])
 
+    def test_python3_dash_m(self):
+        t = Transcript().user("x").bash("python3 -m pytest", "3 passed")
+        self.assertEqual(self.findings("All tests pass.", t), [])
+
 
 # --------------------------------------------------------------------------- build check
 
@@ -119,8 +137,7 @@ class TestBuildCheck(TmpMixin):
 
     def test_claim_and_tsc_failed(self):
         t = Transcript().user("x").bash("npx tsc --noEmit", "error TS2304", exit_code=2)
-        f = self.findings("No type errors.", t)
-        self.assertEqual([x.kind for x in f], ["build"])
+        self.assertEqual([x.kind for x in self.findings("No type errors.", t)], ["build"])
 
 
 # --------------------------------------------------------------------------- edits check
@@ -160,78 +177,93 @@ class TestAgreementsCheck(TmpMixin):
         self.assertEqual(self.findings("As we agreed, using a Redis token bucket.", t), [])
 
 
-# --------------------------------------------------------------------------- verify glue
+# --------------------------------------------------------------------------- CLI / hook flow
 
 
-class TestBuildOutput(TmpMixin):
-    def _payload(self, final, t, **kw):
-        tp = t.dump(self.dir / "t.jsonl")
-        return hook_input(final, tp, cwd=str(self.dir), **kw)
-
-    def test_clean_session_no_output(self):
+class TestCli(TmpMixin):
+    def test_clean_session_prints_empty_object(self):
         t = Transcript().user("x").bash("pytest", "5 passed").edit("a.py")
-        self.assertEqual(build_output(self._payload("Updated a.py, tests pass.", t)), {})
+        code, out = self.run_cli(self.payload("Updated a.py, tests pass.", t))
+        self.assertEqual((code, out), (0, "{}"))
 
     def test_warn_only_by_default(self):
         t = Transcript().user("x").say("done")
-        out = build_output(self._payload("All tests pass.", t))
-        self.assertIn("systemMessage", out)
-        self.assertNotIn("decision", out.get("hookSpecificOutput", {}))
-        self.assertIn("no test command ran", out["systemMessage"])
+        _, out = self.run_cli(self.payload("All tests pass.", t))
+        data = json.loads(out)
+        self.assertIn("systemMessage", data)
+        self.assertNotIn("decision", data.get("hookSpecificOutput", {}))
+        self.assertIn("no test command ran", data["systemMessage"])
+        self.assertIn("claimcheck", data["systemMessage"])
 
     def test_strict_blocks(self):
-        (self.dir / ".receipts.json").write_text(json.dumps({"strict": True}))
+        (self.dir / ".claimcheck.json").write_text(json.dumps({"strict": True}))
         t = Transcript().user("x").say("done")
-        out = build_output(self._payload("All tests pass.", t))
-        self.assertEqual(out["hookSpecificOutput"]["decision"], "block")
-        self.assertIn("additionalContext", out["hookSpecificOutput"])
+        _, out = self.run_cli(self.payload("All tests pass.", t))
+        data = json.loads(out)
+        self.assertEqual(data["hookSpecificOutput"]["decision"], "block")
+        self.assertIn("additionalContext", data["hookSpecificOutput"])
 
     def test_stop_hook_active_is_noop(self):
         t = Transcript().user("x").say("done")
-        self.assertEqual(
-            build_output(self._payload("All tests pass.", t, stop_hook_active=True)), {}
-        )
+        _, out = self.run_cli(self.payload("All tests pass.", t, stop_hook_active=True))
+        self.assertEqual(out, "{}")
 
     def test_no_final_message_is_noop(self):
         t = Transcript().user("x").say("done")
-        self.assertEqual(build_output(self._payload("", t)), {})
-
-    def test_ignore_config(self):
-        (self.dir / ".receipts.json").write_text(json.dumps({"ignore": ["tests"]}))
-        t = Transcript().user("x").say("done")
-        self.assertEqual(build_output(self._payload("All tests pass.", t)), {})
+        _, out = self.run_cli(self.payload("", t))
+        self.assertEqual(out, "{}")
 
     def test_missing_transcript_is_noop(self):
-        payload = hook_input("All tests pass.", "/no/such/transcript.jsonl", cwd=str(self.dir))
-        self.assertEqual(build_output(payload), {})
+        _, out = self.run_cli(hook_input("All tests pass.", "/no/such.jsonl", cwd=str(self.dir)))
+        self.assertEqual(out, "{}")
+
+    def test_ignore_config(self):
+        (self.dir / ".claimcheck.json").write_text(json.dumps({"ignore": ["tests"]}))
+        t = Transcript().user("x").say("done")
+        _, out = self.run_cli(self.payload("All tests pass.", t))
+        self.assertEqual(out, "{}")
+
+    def test_text_mode(self):
+        t = Transcript().user("x").say("done")
+        _, out = self.run_cli(
+            self.payload("All tests pass.", t), argv=("--from", "claude-code", "--text")
+        )
+        self.assertTrue(out.startswith("⚠️"))
+        self.assertNotIn("{", out)
+
+    def test_strict_exit_code(self):
+        t = Transcript().user("x").say("done")
+        code, _ = self.run_cli(
+            self.payload("All tests pass.", t), argv=("--from", "claude-code", "--strict-exit")
+        )
+        self.assertEqual(code, 1)
+
+    def test_garbage_stdin_is_survivable(self):
+        code, out = self.run_cli({}, raw_stdin="not json at all {{{")
+        self.assertEqual((code, out), (0, "{}"))
 
 
-# --------------------------------------------------------------------------- session parsing
+# --------------------------------------------------------------------------- adapter parsing
 
 
-class TestSession(TmpMixin):
+class TestClaudeCodeAdapter(TmpMixin):
     def test_exit_code_parsed(self):
-        t = Transcript().user("x").bash("pytest", "boom", exit_code=1)
-        s = self.sess("hi", t)
-        self.assertEqual(s.commands[0].exit_code, 1)
-        self.assertFalse(s.commands[0].ok)
+        turn = self.turn("hi", Transcript().user("x").bash("pytest", "boom", exit_code=1))
+        self.assertEqual(turn.commands[0].exit_code, 1)
+        self.assertFalse(turn.commands[0].ok)
 
     def test_real_user_vs_tool_result(self):
-        t = Transcript().user("do the thing").bash("ls", "file1")
-        s = self.sess("hi", t)
-        self.assertEqual(s.user_messages, ["do the thing"])
-
-    def test_missing_transcript_is_survivable(self):
-        s = Session.from_hook_input(
-            {"last_assistant_message": "hey", "transcript_path": "/nope/x.jsonl"}
-        )
-        self.assertEqual(s.final_message, "hey")
-        self.assertFalse(s.transcript_found)
+        turn = self.turn("hi", Transcript().user("do the thing").bash("ls", "file1"))
+        self.assertEqual(turn.user_messages, ["do the thing"])
 
     def test_garbage_lines_skipped(self):
         t = Transcript().raw({"type": "queue-operation", "junk": 1}).user("x").bash("pytest", "ok")
-        s = self.sess("hi", t)
-        self.assertEqual(len(s.commands), 1)
+        self.assertEqual(len(self.turn("hi", t).commands), 1)
+
+    def test_source_and_observed(self):
+        turn = self.turn("hi", Transcript().user("x"))
+        self.assertEqual(turn.source, "claude-code")
+        self.assertTrue(turn.observed)
 
 
 if __name__ == "__main__":

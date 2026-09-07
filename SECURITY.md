@@ -2,21 +2,21 @@
 
 ## Threat model
 
-`receipts` runs as a Claude Code `Stop` hook. It:
+`claimcheck` runs as a Claude Code `Stop` hook. It:
 
 - reads the hook payload on stdin and the session transcript file named in it
-- reads an optional `.receipts.json` from the project directory
+- reads an optional `.claimcheck.json` from the project directory
 - writes a JSON result to stdout and diagnostics to stderr
 - makes **no** network calls, spawns **no** subprocesses, and loads **no** models
 
 It never executes commands from the transcript or from config. A malicious transcript
-or config can at worst cause `receipts` to print nothing (it catches all exceptions and
+or config can at worst cause `claimcheck` to print nothing (it catches all exceptions and
 exits 0).
 
 ## Reporting a vulnerability
 
 Please report suspected vulnerabilities through GitHub's
-[private vulnerability reporting](https://github.com/monikagadage/claude-code-receipts/security/advisories/new)
+[private vulnerability reporting](https://github.com/monikagadage/claimcheck/security/advisories/new)
 rather than a public issue.
 
 You can expect an initial response within 7 days.

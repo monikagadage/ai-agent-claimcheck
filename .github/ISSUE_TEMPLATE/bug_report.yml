@@ -1,19 +1,19 @@
 name: Bug report
-description: receipts flagged something it shouldn't have, or missed something it should catch
+description: claimcheck flagged something it shouldn't have, or missed something it should catch
 labels: ["bug"]
 body:
   - type: textarea
     id: claim
     attributes:
       label: The claim in Claude's final message
-      description: Paste the sentence(s) receipts reacted to (or should have).
+      description: Paste the sentence(s) claimcheck reacted to (or should have).
       placeholder: '"All tests pass and I updated the auth module."'
     validations:
       required: true
   - type: textarea
     id: reported
     attributes:
-      label: What receipts reported
+      label: What claimcheck reported
       description: The full ⚠️ block, or "(nothing)" if it stayed silent.
     validations:
       required: true
@@ -39,4 +39,4 @@ body:
   - type: input
     id: versions
     attributes:
-      label: receipts version, Claude Code version, python3 version, OS
+      label: claimcheck version, Claude Code version, python3 version, OS

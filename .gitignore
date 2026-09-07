@@ -5,6 +5,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .DS_Store
-/.receipts.json
+/.claimcheck.json
 build/
 dist/

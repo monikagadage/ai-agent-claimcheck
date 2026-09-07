@@ -1,7 +1,8 @@
-"""The four v1 checks. Each takes (session, claims) and returns Findings.
+"""The four v1 checks. Each takes (turn, claims) and returns Findings.
 
 Deterministic only: no network, no model. A check stays silent unless it is
-confident a claim is unbacked.
+confident a claim is unbacked. Operates purely on the platform-neutral
+`AgentTurn` — nothing in here knows which agent produced it.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ import re
 from dataclasses import dataclass
 
 from .claims import Claim
-from .session import Session
+from .model import AgentTurn
 
 TEST_RUNNER_PATTERNS = [
     r"\bpytest\b",
@@ -84,11 +85,11 @@ def _matches(text: str, patterns: list[str]) -> bool:
     return any(re.search(p, text, re.I) for p in patterns)
 
 
-def check_tests(session: Session, claims: list[Claim], patterns: list[str]) -> list[Finding]:
+def check_tests(turn: AgentTurn, claims: list[Claim], patterns: list[str]) -> list[Finding]:
     cs = [c for c in claims if c.kind == "tests"]
     if not cs:
         return []
-    ran = [cmd for cmd in session.commands if _matches(cmd.text, patterns)]
+    ran = [cmd for cmd in turn.commands if _matches(cmd.text, patterns)]
     if not ran:
         return [Finding("tests", c.text, "no test command ran this session") for c in cs]
     if any(cmd.ok for cmd in ran):
@@ -98,11 +99,11 @@ def check_tests(session: Session, claims: list[Claim], patterns: list[str]) -> l
     return [Finding("tests", c.text, "the only test command this session failed", ev) for c in cs]
 
 
-def check_build(session: Session, claims: list[Claim], patterns: list[str]) -> list[Finding]:
+def check_build(turn: AgentTurn, claims: list[Claim], patterns: list[str]) -> list[Finding]:
     cs = [c for c in claims if c.kind == "build"]
     if not cs:
         return []
-    ran = [cmd for cmd in session.commands if _matches(cmd.text, patterns)]
+    ran = [cmd for cmd in turn.commands if _matches(cmd.text, patterns)]
     if not ran:
         return [Finding("build", c.text, "no build/typecheck command ran this session") for c in cs]
     if any(cmd.ok for cmd in ran):
@@ -112,11 +113,11 @@ def check_build(session: Session, claims: list[Claim], patterns: list[str]) -> l
     return [Finding("build", c.text, "the only build command this session failed", ev) for c in cs]
 
 
-def check_edits(session: Session, claims: list[Claim]) -> list[Finding]:
+def check_edits(turn: AgentTurn, claims: list[Claim]) -> list[Finding]:
     cs = [c for c in claims if c.kind == "edit" and c.target]
     if not cs:
         return []
-    touched = [e.path for e in session.edits if _looks_like_file(e.path)]
+    touched = [e.path for e in turn.edits if _looks_like_file(e.path)]
     findings = []
     for c in cs:
         if not _path_touched(c.target, touched):
@@ -134,11 +135,11 @@ def check_edits(session: Session, claims: list[Claim]) -> list[Finding]:
     return findings
 
 
-def check_agreements(session: Session, claims: list[Claim]) -> list[Finding]:
+def check_agreements(turn: AgentTurn, claims: list[Claim]) -> list[Finding]:
     cs = [c for c in claims if c.kind == "agreement" and c.target]
     if not cs:
         return []
-    corpus = "\n".join(session.user_messages).lower()
+    corpus = "\n".join(turn.user_messages).lower()
     if not corpus:
         return []
     findings = []
@@ -160,19 +161,19 @@ def check_agreements(session: Session, claims: list[Claim]) -> list[Finding]:
 
 
 def run_all_checks(
-    session: Session, claims: list[Claim], test_patterns=None, build_patterns=None, ignore=()
+    turn: AgentTurn, claims: list[Claim], test_patterns=None, build_patterns=None, ignore=()
 ) -> list[Finding]:
     tp = TEST_RUNNER_PATTERNS + list(test_patterns or [])
     bp = BUILD_PATTERNS + list(build_patterns or [])
     out: list[Finding] = []
     if "tests" not in ignore:
-        out += check_tests(session, claims, tp)
+        out += check_tests(turn, claims, tp)
     if "build" not in ignore:
-        out += check_build(session, claims, bp)
+        out += check_build(turn, claims, bp)
     if "edits" not in ignore:
-        out += check_edits(session, claims)
+        out += check_edits(turn, claims)
     if "agreements" not in ignore:
-        out += check_agreements(session, claims)
+        out += check_agreements(turn, claims)
     return out
 
 

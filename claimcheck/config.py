@@ -1,8 +1,8 @@
-"""Optional per-project config: `.receipts.json` (or `receipts.config.json`) in the project root.
+"""Optional per-project config: `.claimcheck.json` in the project root.
 
 {
   "strict": false,              // true -> block the turn instead of just warning
-  "ignore": ["agreements"],     // check names to skip: tests|build|edits|agreements
+  "ignore": ["agreements"],     // checks to skip: tests | build | edits | agreements
   "test_patterns": ["\\bbazel test\\b"],
   "build_patterns": ["\\bbazel build\\b"]
 }
@@ -14,14 +14,14 @@ import json
 from pathlib import Path
 
 DEFAULT = {"strict": False, "ignore": [], "test_patterns": [], "build_patterns": []}
-FILENAMES = (".receipts.json", "receipts.config.json")
+FILENAMES = (".claimcheck.json", "claimcheck.config.json")
 
 
-def load_config(cwd: str | None) -> dict:
+def load_config(project_dir: str | None) -> dict:
     cfg = dict(DEFAULT)
-    if not cwd:
+    if not project_dir:
         return cfg
-    base = Path(cwd).expanduser()
+    base = Path(project_dir).expanduser()
     for name in FILENAMES:
         p = base / name
         if p.is_file():
