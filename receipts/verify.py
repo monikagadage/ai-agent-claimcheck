@@ -38,7 +38,8 @@ def build_output(data: dict) -> dict:
         return {}
 
     findings = run_all_checks(
-        session, claims,
+        session,
+        claims,
         test_patterns=cfg.get("test_patterns"),
         build_patterns=cfg.get("build_patterns"),
         ignore=set(cfg.get("ignore") or []),
