@@ -186,10 +186,15 @@ It catches the blunt, common cases well.
 
 ## Roadmap
 
+- Verify the Cursor transcript parser against real sessions.
+- Codex CLI adapter (has `notify` hooks + `~/.codex/` session logs).
 - Opt-in LLM layer: on `Stop`, ask a subagent "cite the tool call behind each claim or retract it" — catches the semantic cases regex can't.
 - `PostToolUse` companion: catch "I ran the tests" mid-turn.
 - Diff-vs-summary check.
-- Cursor and Codex CLI adapters.
+- **VS Code Copilot** — no agent-lifecycle API exists. Copilot *does* persist chat
+  sessions to disk, but in an undocumented incremental-patch format. A background
+  file-watcher + a zsh `preexec` hook feeding `--from generic` is the only path, and
+  it's fragile. Not planned; use `--from generic` manually.
 
 ## Development
 
