@@ -35,12 +35,13 @@ that runs a *fixed* command like `npm test`. `claimcheck` is different: it reads
 
 ## Platforms
 
-| Platform | Status |
+| Surface | Status |
 | --- | --- |
-| **Claude Code** | ✅ supported (a `Stop`-hook plugin) |
-| Cursor | planned |
-| Codex CLI | planned |
-| Any transcript | via the CLI (`claimcheck --from …`) |
+| **Claude Code** — CLI, IDE extensions, desktop Code tab | ✅ supported (`Stop`-hook plugin or a `settings.json` hook) |
+| **Cowork** (Claude Desktop) | ⚠️ a user `settings.json` hook does **not** fire here; install as a plugin instead (untested — reports welcome) |
+| Cursor | planned adapter |
+| Codex CLI | planned adapter |
+| Any transcript | the CLI (`python -m claimcheck.cli --from …`) |
 
 The claim logic and the checks are platform-neutral (`claimcheck/claims.py`,
 `claimcheck/checks.py`). Each platform is one small adapter in `claimcheck/adapters/`.
