@@ -22,8 +22,13 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-EDIT_TOOLS = {"Edit": "file_path", "Write": "file_path", "MultiEdit": "file_path",
-              "NotebookEdit": "notebook_path", "Update": "file_path"}
+EDIT_TOOLS = {
+    "Edit": "file_path",
+    "Write": "file_path",
+    "MultiEdit": "file_path",
+    "NotebookEdit": "notebook_path",
+    "Update": "file_path",
+}
 
 
 @dataclass
@@ -54,9 +59,11 @@ class Session:
     # ---- construction ---------------------------------------------------------
 
     @classmethod
-    def from_hook_input(cls, data: dict) -> "Session":
-        s = cls(final_message=(data.get("last_assistant_message") or "").strip(),
-                cwd=data.get("cwd", "") or "")
+    def from_hook_input(cls, data: dict) -> Session:
+        s = cls(
+            final_message=(data.get("last_assistant_message") or "").strip(),
+            cwd=data.get("cwd", "") or "",
+        )
         tpath = data.get("transcript_path")
         if tpath and Path(tpath).expanduser().is_file():
             s.transcript_found = True
@@ -64,7 +71,7 @@ class Session:
         return s
 
     def _load_transcript(self, path: Path) -> None:
-        pending: dict[str, tuple[str, dict, bool]] = {}   # tool_use_id -> (name, input, sidechain)
+        pending: dict[str, tuple[str, dict, bool]] = {}  # tool_use_id -> (name, input, sidechain)
         last_assistant_text = ""
 
         for line in path.read_text(errors="replace").splitlines():
@@ -101,7 +108,9 @@ class Session:
                             if p:
                                 self.edits.append(FileEdit(str(p), name, sidechain))
                         if name == "Bash":
-                            self.edits.extend(_edits_from_bash(tinput.get("command", ""), sidechain))
+                            self.edits.extend(
+                                _edits_from_bash(tinput.get("command", ""), sidechain)
+                            )
                 continue
 
             # typ == "user"
@@ -123,19 +132,22 @@ class Session:
                 ok = not is_error and (exit_code in (0, None))
                 if exit_code not in (0, None):
                     ok = False
-                self.commands.append(Command(
-                    text=tinput.get("command", "").strip(),
-                    ok=ok,
-                    exit_code=exit_code,
-                    output=body[:4000],
-                    sidechain=sc,
-                ))
+                self.commands.append(
+                    Command(
+                        text=tinput.get("command", "").strip(),
+                        ok=ok,
+                        exit_code=exit_code,
+                        output=body[:4000],
+                        sidechain=sc,
+                    )
+                )
 
         if not self.final_message:
             self.final_message = last_assistant_text
 
 
 # ---- helpers ----------------------------------------------------------------
+
 
 def _as_items(content) -> list[dict]:
     if isinstance(content, list):
@@ -154,17 +166,14 @@ def _result_text(content) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return "\n".join(
-            c.get("text", "") if isinstance(c, dict) else str(c)
-            for c in content
-        )
+        return "\n".join(c.get("text", "") if isinstance(c, dict) else str(c) for c in content)
     return ""
 
 
 def _exit_code(body: str) -> int | None:
     head = body.lstrip()[:40]
     if head.startswith("Exit code "):
-        digits = head[len("Exit code "):].split()[0].strip().rstrip(".")
+        digits = head[len("Exit code ") :].split()[0].strip().rstrip(".")
         if digits.isdigit():
             return int(digits)
     return None
@@ -173,6 +182,7 @@ def _exit_code(body: str) -> int | None:
 def _edits_from_bash(command: str, sidechain: bool) -> list[FileEdit]:
     """Best-effort: catch obvious file mutations done via shell."""
     import re
+
     out: list[FileEdit] = []
 
     def clean(t: str) -> str | None:

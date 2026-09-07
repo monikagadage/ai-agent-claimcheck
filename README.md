@@ -1,5 +1,9 @@
 # receipts
 
+[![ci](https://github.com/monikagadage/claude-code-receipts/actions/workflows/test.yml/badge.svg)](https://github.com/monikagadage/claude-code-receipts/actions/workflows/test.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![python: 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+
 **Claude Code says "Done ✅". This checks whether it actually did the thing.**
 
 `receipts` is a Claude Code plugin that runs when Claude finishes a turn and compares

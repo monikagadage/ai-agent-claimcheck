@@ -54,9 +54,9 @@ AGREEMENT_RE = re.compile(
 
 @dataclass
 class Claim:
-    kind: str            # "tests" | "build" | "edit" | "agreement"
-    text: str            # the sentence it came from
-    target: str | None = None   # file path (edit) or the referenced thing (agreement)
+    kind: str  # "tests" | "build" | "edit" | "agreement"
+    text: str  # the sentence it came from
+    target: str | None = None  # file path (edit) or the referenced thing (agreement)
 
 
 def extract_claims(message: str) -> list[Claim]:
@@ -66,9 +66,15 @@ def extract_claims(message: str) -> list[Claim]:
     sentences = [s.strip() for s in _SENT_SPLIT.split(message) if s.strip()]
     for sent in sentences:
         low = sent.lower()
-        if TESTS_RE.search(sent) and "did the tests pass" not in low and not low.startswith(("if ", "do the", "should ", "make sure", "run the", "once ")):
+        if (
+            TESTS_RE.search(sent)
+            and "did the tests pass" not in low
+            and not low.startswith(("if ", "do the", "should ", "make sure", "run the", "once "))
+        ):
             claims.append(Claim("tests", sent))
-        if BUILD_RE.search(sent) and not low.startswith(("if ", "does it", "should ", "make sure", "verify ")):
+        if BUILD_RE.search(sent) and not low.startswith(
+            ("if ", "does it", "should ", "make sure", "verify ")
+        ):
             claims.append(Claim("build", sent))
         for m in EDIT_RE.finditer(sent):
             claims.append(Claim("edit", sent, target=m.group(2)))

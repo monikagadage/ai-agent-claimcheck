@@ -1,11 +1,11 @@
 """Optional per-project config: `.receipts.json` (or `receipts.config.json`) in the project root.
 
-    {
-      "strict": false,              // true -> block the turn instead of just warning
-      "ignore": ["agreements"],     // check names to skip: tests|build|edits|agreements
-      "test_patterns": ["\\bbazel test\\b"],
-      "build_patterns": ["\\bbazel build\\b"]
-    }
+{
+  "strict": false,              // true -> block the turn instead of just warning
+  "ignore": ["agreements"],     // check names to skip: tests|build|edits|agreements
+  "test_patterns": ["\\bbazel test\\b"],
+  "build_patterns": ["\\bbazel build\\b"]
+}
 """
 
 from __future__ import annotations

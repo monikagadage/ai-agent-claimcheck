@@ -1,0 +1,42 @@
+name: Bug report
+description: receipts flagged something it shouldn't have, or missed something it should catch
+labels: ["bug"]
+body:
+  - type: textarea
+    id: claim
+    attributes:
+      label: The claim in Claude's final message
+      description: Paste the sentence(s) receipts reacted to (or should have).
+      placeholder: '"All tests pass and I updated the auth module."'
+    validations:
+      required: true
+  - type: textarea
+    id: reported
+    attributes:
+      label: What receipts reported
+      description: The full ⚠️ block, or "(nothing)" if it stayed silent.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: transcript
+    attributes:
+      label: Relevant transcript lines (redacted)
+      description: >
+        The tool calls that matter — e.g. the Bash commands that ran, or the Edit/Write
+        calls. Redact anything sensitive. From `~/.claude/projects/<project>/<session>.jsonl`.
+      render: json
+  - type: input
+    id: mode
+    attributes:
+      label: Mode
+      placeholder: warn-only (default) / strict
+  - type: input
+    id: versions
+    attributes:
+      label: receipts version, Claude Code version, python3 version, OS

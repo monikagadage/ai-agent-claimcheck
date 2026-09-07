@@ -1,0 +1,25 @@
+name: Feature request
+description: A new check, a new claim pattern, or a config option
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: claim
+    attributes:
+      label: What kind of claim should be checkable
+      placeholder: '"I added a migration" / "the linter is clean" / "I bumped the version"'
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What in the transcript would back it up
+      description: >
+        Remember the design rule — a check must be able to be *confident*. If a claim
+        can only be verified by understanding meaning, it belongs in the opt-in LLM
+        layer, not the deterministic core.
+    validations:
+      required: true
+  - type: textarea
+    id: falsepos
+    attributes:
+      label: Where could this false-alarm

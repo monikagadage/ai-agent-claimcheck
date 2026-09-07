@@ -1,6 +1,6 @@
 """M0 regression suite for receipts. Stdlib unittest, no deps.
 
-    python -m unittest discover -s tests -v
+python -m unittest discover -s tests -v
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from receipts.claims import extract_claims
 from receipts.checks import run_all_checks
+from receipts.claims import extract_claims
 from receipts.session import Session
 from receipts.verify import build_output
 from tests._build import Transcript, hook_input
@@ -37,17 +37,24 @@ class TmpMixin(unittest.TestCase):
 
 # --------------------------------------------------------------------------- claims
 
+
 class TestClaims(unittest.TestCase):
     def test_positive_test_claims(self):
-        for m in ["All tests pass.", "The tests are passing now.", "Test suite is green.",
-                  "I ran the suite and all 42 tests pass."]:
+        for m in [
+            "All tests pass.",
+            "The tests are passing now.",
+            "Test suite is green.",
+            "I ran the suite and all 42 tests pass.",
+        ]:
             self.assertTrue(any(c.kind == "tests" for c in extract_claims(m)), m)
 
     def test_negative_test_claims(self):
-        for m in ["Make sure the tests pass before merging.",
-                  "If the tests pass we can ship.",
-                  "Do the tests pass?",
-                  "You should run the tests."]:
+        for m in [
+            "Make sure the tests pass before merging.",
+            "If the tests pass we can ship.",
+            "Do the tests pass?",
+            "You should run the tests.",
+        ]:
             self.assertFalse(any(c.kind == "tests" for c in extract_claims(m)), m)
 
     def test_build_claims(self):
@@ -67,6 +74,7 @@ class TestClaims(unittest.TestCase):
 
 # --------------------------------------------------------------------------- tests check
 
+
 class TestTestsCheck(TmpMixin):
     def test_claim_but_no_test_ran(self):
         f = self.findings("All tests pass.", Transcript().user("build it").say("done").bash("ls"))
@@ -84,9 +92,12 @@ class TestTestsCheck(TmpMixin):
         self.assertIn("failed", f[0].reason)
 
     def test_failing_then_passing_is_ok(self):
-        t = (Transcript().user("fix bug")
-             .bash("pytest -q", "1 failed", exit_code=1)
-             .bash("pytest -q", "12 passed"))
+        t = (
+            Transcript()
+            .user("fix bug")
+            .bash("pytest -q", "1 failed", exit_code=1)
+            .bash("pytest -q", "12 passed")
+        )
         self.assertEqual(self.findings("All tests pass now.", t), [])
 
     def test_subagent_test_run_counts(self):
@@ -95,6 +106,7 @@ class TestTestsCheck(TmpMixin):
 
 
 # --------------------------------------------------------------------------- build check
+
 
 class TestBuildCheck(TmpMixin):
     def test_claim_but_no_build(self):
@@ -112,6 +124,7 @@ class TestBuildCheck(TmpMixin):
 
 
 # --------------------------------------------------------------------------- edits check
+
 
 class TestEditsCheck(TmpMixin):
     def test_claimed_file_not_touched(self):
@@ -135,6 +148,7 @@ class TestEditsCheck(TmpMixin):
 
 # --------------------------------------------------------------------------- agreements check
 
+
 class TestAgreementsCheck(TmpMixin):
     def test_invented_agreement(self):
         t = Transcript().user("please add rate limiting to the API")
@@ -147,6 +161,7 @@ class TestAgreementsCheck(TmpMixin):
 
 
 # --------------------------------------------------------------------------- verify glue
+
 
 class TestBuildOutput(TmpMixin):
     def _payload(self, final, t, **kw):
@@ -173,7 +188,9 @@ class TestBuildOutput(TmpMixin):
 
     def test_stop_hook_active_is_noop(self):
         t = Transcript().user("x").say("done")
-        self.assertEqual(build_output(self._payload("All tests pass.", t, stop_hook_active=True)), {})
+        self.assertEqual(
+            build_output(self._payload("All tests pass.", t, stop_hook_active=True)), {}
+        )
 
     def test_no_final_message_is_noop(self):
         t = Transcript().user("x").say("done")
@@ -191,6 +208,7 @@ class TestBuildOutput(TmpMixin):
 
 # --------------------------------------------------------------------------- session parsing
 
+
 class TestSession(TmpMixin):
     def test_exit_code_parsed(self):
         t = Transcript().user("x").bash("pytest", "boom", exit_code=1)
@@ -204,7 +222,9 @@ class TestSession(TmpMixin):
         self.assertEqual(s.user_messages, ["do the thing"])
 
     def test_missing_transcript_is_survivable(self):
-        s = Session.from_hook_input({"last_assistant_message": "hey", "transcript_path": "/nope/x.jsonl"})
+        s = Session.from_hook_input(
+            {"last_assistant_message": "hey", "transcript_path": "/nope/x.jsonl"}
+        )
         self.assertEqual(s.final_message, "hey")
         self.assertFalse(s.transcript_found)
 

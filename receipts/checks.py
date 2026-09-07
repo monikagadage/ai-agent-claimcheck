@@ -13,25 +13,62 @@ from .claims import Claim
 from .session import Session
 
 TEST_RUNNER_PATTERNS = [
-    r"\bpytest\b", r"\bpy\.test\b", r"\bpython3?\s+-m\s+(pytest|unittest|nose2?|tox)\b",
-    r"\bpython3?\s+-m\s+django\s+test\b", r"\bmanage\.py\s+test\b",
-    r"\bnpm\s+(run\s+)?test\b", r"\byarn\s+test\b", r"\bpnpm\s+(run\s+)?test\b",
-    r"\bnpx\s+(jest|vitest|mocha|playwright)\b", r"\bjest\b", r"\bvitest\b", r"\bmocha\b",
-    r"\bgo\s+test\b", r"\bcargo\s+test\b", r"\bcargo\s+nextest\b",
-    r"\bmvn\b[^\n]*\b(test|verify)\b", r"\bgradle\b[^\n]*\btest\b", r"\./gradlew\b[^\n]*\btest\b",
-    r"\brspec\b", r"\bbundle\s+exec\s+rspec\b", r"\brake\s+test\b", r"\bphpunit\b",
-    r"\bdotnet\s+test\b", r"\bctest\b", r"\btox\b", r"\bnose2?\b", r"\bbin/rails\s+test\b",
-    r"\bmake\s+test\b", r"\bmake\s+check\b",
+    r"\bpytest\b",
+    r"\bpy\.test\b",
+    r"\bpython3?\s+-m\s+(pytest|unittest|nose2?|tox)\b",
+    r"\bpython3?\s+-m\s+django\s+test\b",
+    r"\bmanage\.py\s+test\b",
+    r"\bnpm\s+(run\s+)?test\b",
+    r"\byarn\s+test\b",
+    r"\bpnpm\s+(run\s+)?test\b",
+    r"\bnpx\s+(jest|vitest|mocha|playwright)\b",
+    r"\bjest\b",
+    r"\bvitest\b",
+    r"\bmocha\b",
+    r"\bgo\s+test\b",
+    r"\bcargo\s+test\b",
+    r"\bcargo\s+nextest\b",
+    r"\bmvn\b[^\n]*\b(test|verify)\b",
+    r"\bgradle\b[^\n]*\btest\b",
+    r"\./gradlew\b[^\n]*\btest\b",
+    r"\brspec\b",
+    r"\bbundle\s+exec\s+rspec\b",
+    r"\brake\s+test\b",
+    r"\bphpunit\b",
+    r"\bdotnet\s+test\b",
+    r"\bctest\b",
+    r"\btox\b",
+    r"\bnose2?\b",
+    r"\bbin/rails\s+test\b",
+    r"\bmake\s+test\b",
+    r"\bmake\s+check\b",
 ]
 
 BUILD_PATTERNS = [
-    r"\btsc\b", r"\bmypy\b", r"\bpyright\b", r"\bpython3?\s+-m\s+mypy\b",
-    r"\bnpm\s+run\s+build\b", r"\byarn\s+build\b",
-    r"\bpnpm\s+(run\s+)?build\b", r"\bnpx\s+tsc\b", r"\bgo\s+build\b", r"\bgo\s+vet\b",
-    r"\bcargo\s+(build|check)\b", r"\bmvn\b[^\n]*\b(compile|package|install)\b",
-    r"\bgradle\b[^\n]*\b(build|assemble|compile\w*)\b", r"\./gradlew\b[^\n]*\bbuild\b",
-    r"\bjavac\b", r"\bmake\b", r"\bcmake\b", r"\bdotnet\s+build\b", r"\bnext\s+build\b",
-    r"\bvite\s+build\b", r"\bwebpack\b", r"\bgcc\b", r"\bg\+\+\b", r"\bclang\b",
+    r"\btsc\b",
+    r"\bmypy\b",
+    r"\bpyright\b",
+    r"\bpython3?\s+-m\s+mypy\b",
+    r"\bnpm\s+run\s+build\b",
+    r"\byarn\s+build\b",
+    r"\bpnpm\s+(run\s+)?build\b",
+    r"\bnpx\s+tsc\b",
+    r"\bgo\s+build\b",
+    r"\bgo\s+vet\b",
+    r"\bcargo\s+(build|check)\b",
+    r"\bmvn\b[^\n]*\b(compile|package|install)\b",
+    r"\bgradle\b[^\n]*\b(build|assemble|compile\w*)\b",
+    r"\./gradlew\b[^\n]*\bbuild\b",
+    r"\bjavac\b",
+    r"\bmake\b",
+    r"\bcmake\b",
+    r"\bdotnet\s+build\b",
+    r"\bnext\s+build\b",
+    r"\bvite\s+build\b",
+    r"\bwebpack\b",
+    r"\bgcc\b",
+    r"\bg\+\+\b",
+    r"\bclang\b",
 ]
 
 
@@ -84,8 +121,15 @@ def check_edits(session: Session, claims: list[Claim]) -> list[Finding]:
     for c in cs:
         if not _path_touched(c.target, touched):
             names = _unique(_basename(p) for p in touched)
-            ev = ("files edited this session: " + ", ".join(names[:5]) + ("…" if len(names) > 5 else "")) \
-                if names else "no files were edited this session"
+            ev = (
+                (
+                    "files edited this session: "
+                    + ", ".join(names[:5])
+                    + ("…" if len(names) > 5 else "")
+                )
+                if names
+                else "no files were edited this session"
+            )
             findings.append(Finding("edit", c.text, f"nothing modified `{c.target}`", ev))
     return findings
 
@@ -104,16 +148,20 @@ def check_agreements(session: Session, claims: list[Claim]) -> list[Finding]:
             continue
         hits = [k for k in kws if k in corpus]
         if len(hits) < max(1, len(kws) // 2):
-            findings.append(Finding(
-                "agreement", c.text,
-                f"no earlier message from you mentions “{c.target.strip()}”",
-                "possible invented agreement",
-            ))
+            findings.append(
+                Finding(
+                    "agreement",
+                    c.text,
+                    f"no earlier message from you mentions “{c.target.strip()}”",
+                    "possible invented agreement",
+                )
+            )
     return findings
 
 
-def run_all_checks(session: Session, claims: list[Claim],
-                   test_patterns=None, build_patterns=None, ignore=()) -> list[Finding]:
+def run_all_checks(
+    session: Session, claims: list[Claim], test_patterns=None, build_patterns=None, ignore=()
+) -> list[Finding]:
     tp = TEST_RUNNER_PATTERNS + list(test_patterns or [])
     bp = BUILD_PATTERNS + list(build_patterns or [])
     out: list[Finding] = []
@@ -129,6 +177,7 @@ def run_all_checks(session: Session, claims: list[Claim],
 
 
 # ---- helpers ---------------------------------------------------------------
+
 
 def _short(s: str, n: int = 60) -> str:
     s = " ".join(s.split())
@@ -151,7 +200,7 @@ def _unique(xs):
 def _looks_like_file(path: str) -> bool:
     if not path or not isinstance(path, str):
         return False
-    if any(ch in path for ch in "{}$*?()"):   # shell metachars -> not a real path
+    if any(ch in path for ch in "{}$*?()"):  # shell metachars -> not a real path
         return False
     return "." in _basename(path)
 
@@ -167,8 +216,39 @@ def _path_touched(target: str, touched: list[str]) -> bool:
 
 
 def _keywords(phrase: str) -> list[str]:
-    stop = {"the", "a", "an", "to", "of", "for", "and", "or", "we", "you", "i", "use",
-            "using", "with", "this", "that", "it", "in", "on", "as", "will", "should",
-            "our", "your", "be", "is", "are", "was", "were", "do", "did", "have"}
+    stop = {
+        "the",
+        "a",
+        "an",
+        "to",
+        "of",
+        "for",
+        "and",
+        "or",
+        "we",
+        "you",
+        "i",
+        "use",
+        "using",
+        "with",
+        "this",
+        "that",
+        "it",
+        "in",
+        "on",
+        "as",
+        "will",
+        "should",
+        "our",
+        "your",
+        "be",
+        "is",
+        "are",
+        "was",
+        "were",
+        "do",
+        "did",
+        "have",
+    }
     words = re.findall(r"[A-Za-z0-9_.\-]{3,}", phrase.lower())
     return [w for w in words if w not in stop][:6]
