@@ -101,6 +101,18 @@ class TestClaims(unittest.TestCase):
         cs = extract_claims("I updated `auth.py` for the fix.")
         self.assertEqual([c.target for c in cs if c.kind == "edit"], ["auth.py"])
 
+    def test_hypothetical_sentence_is_not_a_claim(self):
+        for m in [
+            "For example, if I updated auth.py it would be flagged.",
+            "A real claim (e.g. I updated config.py) gets checked.",
+            "Such as when I created migrations.py during a run.",
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
+
+    def test_long_parenthetical_aside_is_not_a_claim(self):
+        msg = "The fix works (previously I updated auth.py by hand which was error-prone)."
+        self.assertEqual(extract_claims(msg), [])
+
 
 # --------------------------------------------------------------------------- tests check
 

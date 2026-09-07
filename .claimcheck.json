@@ -1,0 +1,4 @@
+{
+  "ignore": ["edits", "agreements"],
+  "_comment": "This repo is about claims, so prose here is full of claim-shaped examples. Keep the tests/build checks, skip the prose-noisy ones. Not a recommended default — see README."
+}

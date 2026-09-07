@@ -18,6 +18,14 @@ _SENT_SPLIT = re.compile(r"(?<=[.!?\n])\s+|(?<=[;:])\s+")
 _FENCE = re.compile(r"```.*?```", re.S)
 _BLOCKQUOTE = re.compile(r"^[ \t]*>.*$", re.M)
 _SPAN = re.compile(r"`([^`\n]+)`|\"([^\"\n]+)\"|“([^”\n]+)”")
+_PAREN = re.compile(r"\(([^()\n]{25,})\)")
+
+# a sentence carrying one of these is describing / illustrating, not asserting
+_HYPOTHETICAL = re.compile(
+    r"\b(for example|for instance|e\.g\.|such as|imagine|say that|would (?:be )?(?:get |be )?flag|"
+    r"gets? flagged|is flagged|be flagged|hypothetical)",
+    re.I,
+)
 
 
 def _mask_quoted(message: str) -> str:
@@ -30,7 +38,9 @@ def _mask_quoted(message: str) -> str:
             return " "
         return m.group(0)
 
-    return _SPAN.sub(repl, message)
+    message = _SPAN.sub(repl, message)
+    message = _PAREN.sub(" ", message)  # long parenthetical asides
+    return message
 
 
 TESTS_RE = re.compile(
@@ -81,14 +91,24 @@ class Claim:
     target: str | None = None  # file path (edit) or the referenced thing (agreement)
 
 
+_ABBREV = (
+    (re.compile(r"\be\.g\.", re.I), "for example"),
+    (re.compile(r"\bi\.e\.", re.I), "that is"),
+)
+
+
 def extract_claims(message: str) -> list[Claim]:
     if not message:
         return []
+    for pat, repl in _ABBREV:  # keep the sentence splitter from breaking on the dots
+        message = pat.sub(repl, message)
     message = _mask_quoted(message)
     claims: list[Claim] = []
     sentences = [s.strip() for s in _SENT_SPLIT.split(message) if s.strip()]
     for sent in sentences:
         low = sent.lower()
+        if _HYPOTHETICAL.search(sent):
+            continue
         if (
             TESTS_RE.search(sent)
             and "did the tests pass" not in low
