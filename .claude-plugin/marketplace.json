@@ -1,0 +1,15 @@
+{
+  "name": "monikagadage",
+  "description": "Monika Gadage's Claude Code plugins.",
+  "owner": {
+    "name": "Monika Gadage",
+    "url": "https://github.com/monikagadage"
+  },
+  "plugins": [
+    {
+      "name": "receipts",
+      "source": "./",
+      "description": "Checks Claude's end-of-turn claims against what it actually did this session — flags \"tests pass\" with no test run, \"I edited X\" with nothing touched, invented agreements. Warn-only by default."
+    }
+  ]
+}
