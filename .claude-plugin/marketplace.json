@@ -7,9 +7,9 @@
   },
   "plugins": [
     {
-      "name": "claimcheck",
+      "name": "ai-agent-claimcheck",
       "source": "./",
-      "description": "Checks Claude's end-of-turn claims against what it actually did this session — flags \"tests pass\" with no test run, \"I edited X\" with nothing touched, invented agreements. Warn-only by default."
+      "description": "Verify an AI coding agent's end-of-turn claims against what it actually did — flags \"tests pass\" with no test run, \"I edited X\" with nothing touched, invented agreements. Warn-only by default."
     }
   ]
 }

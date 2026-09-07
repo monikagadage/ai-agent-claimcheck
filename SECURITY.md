@@ -16,7 +16,7 @@ exits 0).
 ## Reporting a vulnerability
 
 Please report suspected vulnerabilities through GitHub's
-[private vulnerability reporting](https://github.com/monikagadage/claimcheck/security/advisories/new)
+[private vulnerability reporting](https://github.com/monikagadage/ai-agent-claimcheck/security/advisories/new)
 rather than a public issue.
 
 You can expect an initial response within 7 days.

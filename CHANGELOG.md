@@ -17,4 +17,4 @@ First cut.
   `is_error` / `Exit code N` for failed commands, sub-agent calls).
 - Stdlib only, Python 3.9+.
 
-_(Started life as `claude-code-receipts`; renamed to `claimcheck` before first release.)_
+_(Started life as `claude-code-receipts`; renamed `ai-agent-claimcheck` before first release. Python import path stays `claimcheck`.)_

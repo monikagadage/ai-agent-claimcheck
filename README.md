@@ -1,10 +1,12 @@
-# claimcheck
+# ai-agent-claimcheck
 
-[![ci](https://github.com/monikagadage/claimcheck/actions/workflows/test.yml/badge.svg)](https://github.com/monikagadage/claimcheck/actions/workflows/test.yml)
+[![ci](https://github.com/monikagadage/ai-agent-claimcheck/actions/workflows/test.yml/badge.svg)](https://github.com/monikagadage/ai-agent-claimcheck/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![python: 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 
 **Your AI coding agent says "Done ✅". `claimcheck` checks whether it actually did the thing.**
+
+> Repo/plugin: `ai-agent-claimcheck`. Called `claimcheck` for short (and that's the Python import path).
 
 When the agent finishes a turn, `claimcheck` reads what it *claimed* and compares it to
 what the session actually *shows*:
@@ -47,8 +49,8 @@ The claim logic and the checks are platform-neutral (`claimcheck/claims.py`,
 ## Install (Claude Code)
 
 ```bash
-/plugin marketplace add monikagadage/claimcheck
-/plugin install claimcheck@monikagadage
+/plugin marketplace add monikagadage/ai-agent-claimcheck
+/plugin install ai-agent-claimcheck@monikagadage
 ```
 
 Requires `python3` on your `PATH` (3.9+). No pip packages.
@@ -56,8 +58,8 @@ Requires `python3` on your `PATH` (3.9+). No pip packages.
 Try it without installing:
 
 ```bash
-git clone https://github.com/monikagadage/claimcheck
-claude --plugin-dir ./claimcheck
+git clone https://github.com/monikagadage/ai-agent-claimcheck
+claude --plugin-dir ./ai-agent-claimcheck
 ```
 
 ## What it checks (v1)

@@ -20,15 +20,15 @@ Thanks for taking a look. This is a small, focused tool and it should stay that 
 ## Getting set up
 
 ```bash
-git clone https://github.com/monikagadage/claimcheck
-cd claimcheck
+git clone https://github.com/monikagadage/ai-agent-claimcheck
+cd ai-agent-claimcheck
 python -m unittest discover -s tests -v      # 3.9+
 ```
 
 Try it live in another project:
 
 ```bash
-claude --plugin-dir /path/to/claimcheck
+claude --plugin-dir /path/to/ai-agent-claimcheck
 ```
 
 ## Adding or improving a check
