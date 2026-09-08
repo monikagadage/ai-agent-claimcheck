@@ -57,9 +57,11 @@ def _mask_quoted(message: str) -> str:
 
 TESTS_RE = re.compile(
     r"""(
-        \b(all\s+|the\s+)?(unit\s+|integration\s+|e2e\s+)?tests?\b [^.!?\n]{0,50}?
-            \b(pass(e[sd]|ing)?|are\s+green|succeed(s|ed)?|go(es)?\s+through)\b
+        \b(all\s+|the\s+)?(\d+\s+)?(unit\s+|integration\s+|e2e\s+)?tests?\b [^.!?\n]{0,50}?
+            \b(pass(e[sd]|ing)?|(are\s+|is\s+|come\s+out\s+)?green|succeed(s|ed)?|go(es)?\s+through)\b
       | \ball\s+green\b
+      | \b\d+\s+(tests?\s+)?(passed|passing)\b
+      | \b\d+\s*/\s*\d+\s+(tests?\s+)?(pass\w*|green)\b
       | \btest\s+suite\b [^.!?\n]{0,30}? \b(pass|green|clean|succeed)
       | \b(the\s+)?tests?\s+are\s+(now\s+)?passing\b
     )""",

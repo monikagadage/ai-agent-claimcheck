@@ -29,9 +29,10 @@ TEST_RUNNER_PATTERNS = [
     r"\bgo\s+test\b",
     r"\bcargo\s+test\b",
     r"\bcargo\s+nextest\b",
-    r"\bmvn\b[^\n]*\b(test|verify)\b",
-    r"\bgradle\b[^\n]*\btest\b",
-    r"\./gradlew\b[^\n]*\btest\b",
+    r"\bmvn\b[^\n]*\b(test|verify|integration-test)\b",
+    r"\bgradlew?\b[^\n]*\b\w*[Tt]est\w*\b",  # gradlew :shared:jvmTest, testDebugUnitTest, test
+    r"\bgradlew?\b[^\n]*\bcheck\b",
+    r"\bsbt\b[^\n]*\btest\b",
     r"\brspec\b",
     r"\bbundle\s+exec\s+rspec\b",
     r"\brake\s+test\b",

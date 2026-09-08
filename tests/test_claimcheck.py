@@ -159,6 +159,19 @@ class TestTestsCheck(TmpMixin):
         t = Transcript().user("x").bash("python3 -m pytest", "3 passed")
         self.assertEqual(self.findings("All tests pass.", t), [])
 
+    def test_n_tests_green_phrasing(self):
+        for m in ["12 tests green.", "12 tests passing.", "48 passed.", "12/12 tests green."]:
+            self.assertTrue(any(c.kind == "tests" for c in extract_claims(m)), m)
+
+    def test_gradle_jvmtest_counts(self):
+        t = Transcript().user("x").bash("./gradlew :shared:jvmTest", "BUILD SUCCESSFUL")
+        self.assertEqual(self.findings("12 tests green against the seed.", t), [])
+
+    def test_n_tests_green_with_no_test_run_is_flagged(self):
+        t = Transcript().user("x").say("done").bash("ls")
+        f = self.findings("12 tests green.", t)
+        self.assertEqual([x.kind for x in f], ["tests"])
+
 
 # --------------------------------------------------------------------------- build check
 
