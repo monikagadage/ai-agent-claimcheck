@@ -25,6 +25,9 @@ First cut.
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
 - `confirm` mode (config key or `CLAIMCHECK_CONFIRM=1`): show `✅ claimcheck — N claims
   check out` when a turn's claims all verify. Silent by default / when no claims.
+- Wider edit-claim detection: verb-first ("Created Fort.kt", "- Deleted bun.lockb"),
+  "the new X.kt", "X has been created", multi-verb. Test/build claims now match through
+  a filename that names a file before the verb ("the tests in auth_test.py pass").
 - `scripts/sweep.py` — run claimcheck over past Claude Code transcripts to hunt false
   positives (swept 1600+ real turns; 0 flagged after the guards below).
 - Skip turns with no tool activity (research/summary sessions), test-coverage inventory

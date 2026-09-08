@@ -90,7 +90,8 @@ _TRANSITIVE_PASS = re.compile(
 # a quoted span whose *content* looks like a claim is an example being quoted, not an
 # assertion — mask it regardless of length ("I updated parser.py", "all tests pass")
 _QUOTED_CLAIMISH = re.compile(
-    r"\bI\s+(?:updated|created|added|removed|deleted|edited|fixed|wrote|refactored|renamed)\s+\S*\.\w"
+    r"\b(?:I\s+)?(?:updated|created|added|removed|deleted|edited|fixed|wrote|refactored|renamed"
+    r"|generated|scaffolded)\s+(?:the\s+|a\s+|new\s+|obsolete\s+)*[`'\"]?\S*\.\w"
     r"|\b(?:all\s+|the\s+)?tests?\s+(?:pass|are\s+green|passing|green)\b"
     r"|\ball\s+green\b|\b\d+\s+tests?\s+(?:green|passing|passed)\b"
     r"|\b(?:it\s+|the\s+build\s+)?(?:builds|compiles)\s+(?:clean|fine|now|successfully)"
@@ -117,14 +118,16 @@ def _mask_quoted(message: str) -> str:
     return message
 
 
+# (`.` limited by {0,N}? — we already operate on one split sentence, so no need to
+# forbid `.` and lose claims that name a file before the verb)
 TESTS_RE = re.compile(
     r"""(
-        \b(all\s+|the\s+)?(\d+\s+)?(unit\s+|integration\s+|e2e\s+)?tests?\b [^.!?\n]{0,50}?
+        \b(all\s+|the\s+)?(\d+\s+)?(unit\s+|integration\s+|e2e\s+)?tests?\b .{0,50}?
             \b(pass(e[sd]|ing)?|(are\s+|is\s+|come\s+out\s+)?green|succeed(s|ed)?|go(es)?\s+through)\b
       | \ball\s+green\b
       | \b\d+\s+(tests?\s+)?(passed|passing)\b
       | \b\d+\s*/\s*\d+\s+(tests?\s+)?(pass\w*|green)\b
-      | \btest\s+suite\b [^.!?\n]{0,30}? \b(pass|green|clean|succeed)
+      | \btest\s+suite\b .{0,30}? \b(pass|green|clean|succeed)
       | \b(the\s+)?tests?\s+are\s+(now\s+)?passing\b
     )""",
     re.I | re.X,
@@ -132,22 +135,38 @@ TESTS_RE = re.compile(
 
 BUILD_RE = re.compile(
     r"""(
-        \b(the\s+)?(build|compilation)\b [^.!?\n]{0,30}? \b(pass(es|ed)?|succeed(s|ed)?|is\s+clean|works?|green)\b
+        \b(the\s+)?(build|compilation)\b .{0,30}? \b(pass(es|ed)?|succeed(s|ed)?|is\s+clean|works?|green)\b
       | \b(it\s+)?(builds|compiles)\s+(cleanly|fine|now|successfully|without\s+errors)\b
       | \bno\s+(type|compile|compilation|build|typescript)\s+errors\b
-      | \b(type[- ]?check(ing)?|tsc|mypy)\b [^.!?\n]{0,25}? \b(pass(es|ed)?|clean|succeed|ok)\b
+      | \b(type[- ]?check(ing)?|tsc|mypy)\b .{0,25}? \b(pass(es|ed)?|clean|succeed|ok)\b
     )""",
     re.I | re.X,
 )
 
+_EDIT_VERB = (
+    r"(?:updated|created|added|removed|deleted|modified|refactored|edited|fixed|renamed"
+    r"|moved|rewrote|wrote|generated|scaffolded|introduced|split|extracted|stubbed|dropped)"
+)
+_FILE_TOKEN = re.compile(r"[`'\"]?([\w./-]+\.[A-Za-z0-9]{1,8})[`'\"]?")
+
 EDIT_RE = re.compile(
-    r"""(?:\bI(?:['’]ve|\s+have)?\s+ | \b(?:and|then|also)\s+ )
-        (updated|created|added|removed|deleted|modified|refactored|edited|fixed|
-         renamed|moved|rewrote|wrote)
-        \s+(?:the\s+|a\s+|new\s+)?
-        [`'\"]?([\w./\-]+\.[A-Za-z0-9]{1,6})[`'\"]?
-    """,
-    re.I | re.X,
+    rf"""(
+        # "I updated auth.py", "I've just created X", "and wrote config.toml"
+        (?:\bI(?:['’]ve|\s+have|\s+just|\s+also)?\s+|\b(?:and|then|also|so\s+I)\s+)
+            {_EDIT_VERB}\s+(?:the\s+|a\s+|an\s+|new\s+|obsolete\s+|old\s+|stale\s+)*
+            [`'\"]?[\w./-]+\.[A-Za-z0-9]{{1,8}}[`'\"]?
+      | # verb-first, at a line/bullet start: "Created Fort.kt", "- Deleted bun.lockb"
+        (?:^|[\n•])\s*[-*]?\s*{_EDIT_VERB}\s+
+            (?:the\s+|a\s+|an\s+|new\s+|obsolete\s+|old\s+|stale\s+)*
+            [`'\"]?[\w./-]+\.[A-Za-z0-9]{{1,8}}[`'\"]?
+      | # "the new SeedParser.kt", "a new config.toml"
+        \b(?:a|the)\s+new\s+[`'\"]?[\w./-]+\.[A-Za-z0-9]{{1,8}}[`'\"]?
+      | # "auth.py is / was / has been created|deleted|updated|…"
+        [`'\"]?[\w./-]+\.[A-Za-z0-9]{{1,8}}[`'\"]?\s+
+            (?:is|was|has\s+been|'s\s+been|are\s+now|now)\s+(?:now\s+)?
+            (?:created|added|updated|deleted|removed|modified|written|generated|in\s+place|gone)
+    )""",
+    re.I | re.X | re.M,
 )
 
 AGREEMENT_RE = re.compile(
@@ -208,7 +227,8 @@ def extract_claims(message: str) -> list[Claim]:
         ):
             claims.append(Claim("build", sent))
         for m in EDIT_RE.finditer(sent):
-            claims.append(Claim("edit", sent, target=m.group(2)))
+            for fm in _FILE_TOKEN.finditer(m.group(0)):
+                claims.append(Claim("edit", sent, target=fm.group(1)))
         for m in AGREEMENT_RE.finditer(sent):
             ref = m.group(1).strip(" ,:;-") if m.group(1) else ""
             claims.append(Claim("agreement", sent, target=ref or None))

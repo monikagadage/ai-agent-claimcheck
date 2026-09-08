@@ -81,6 +81,26 @@ class TestClaims(unittest.TestCase):
         cs = extract_claims("I updated `src/auth.py` and created config.toml.")
         self.assertEqual({c.target for c in cs if c.kind == "edit"}, {"src/auth.py", "config.toml"})
 
+    def test_widened_edit_phrasings(self):
+        cases = {
+            "Created Fort.kt with the model.": "Fort.kt",
+            "- Deleted the obsolete bun.lockb file.": "bun.lockb",
+            "The new SeedParser.kt parses the seed.": "SeedParser.kt",
+            "palindrome.py has been created.": "palindrome.py",
+            "I generated the wrapper and wrote settings.gradle.kts.": "settings.gradle.kts",
+        }
+        for msg, want in cases.items():
+            got = [c.target for c in extract_claims(msg) if c.kind == "edit"]
+            self.assertIn(want, got, msg)
+
+    def test_file_mention_is_not_an_edit_claim(self):
+        for m in [
+            "The tests in test_auth.py all pass.",
+            "See config.toml for the settings.",
+            "The bug was in parser.py at line 40.",
+        ]:
+            self.assertFalse(any(c.kind == "edit" for c in extract_claims(m)), m)
+
     def test_agreement_claim(self):
         cs = extract_claims("As we decided, using Redis for the throttle.")
         self.assertTrue(any(c.kind == "agreement" for c in cs))

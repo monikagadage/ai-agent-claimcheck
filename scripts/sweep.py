@@ -67,7 +67,11 @@ def main(argv: list[str]) -> int:
         print(f"no *.jsonl under {root}")
         return 1
 
+    from collections import Counter
+
     sessions = turns = with_claims = flagged_turns = 0
+    claims_by_kind: Counter = Counter()
+    flags_by_kind: Counter = Counter()
     for tp in transcripts:
         texts = _assistant_turns(tp)
         if not texts:
@@ -85,6 +89,8 @@ def main(argv: list[str]) -> int:
                 result = check_turn(
                     parse({"last_assistant_message": text, "transcript_path": str(tp), "cwd": cwd})
                 )
+            for c in result.claims:
+                claims_by_kind[c.kind] += 1
             if result.claims:
                 with_claims += 1
             if not result.findings:
@@ -92,15 +98,23 @@ def main(argv: list[str]) -> int:
             flagged_turns += 1
             print(f"\n─── {tp.name}  ({cwd or '?'}) ───")
             for f in result.findings:
+                flags_by_kind[f.kind] += 1
                 ev = f"  ({f.evidence})" if f.evidence else ""
                 print(f"    ⚠️  [{f.kind}] {f.reason}{ev}")
                 print(f'        claim: "{_oneline(f.claim)}"')
 
+    all_kinds = ("tests", "build", "edit", "agreement")
     print(f"\n{'=' * 60}")
     print(f"sessions with assistant text : {sessions}")
     print(f"turns checked               : {turns}  ({'all' if all_turns else 'final only'})")
-    print(f"  with checkable claims      : {with_claims}")
-    print(f"  flagged                    : {flagged_turns}")
+    print(f"  turns with checkable claims: {with_claims}")
+    print(f"  turns flagged              : {flagged_turns}")
+    print(
+        "  claims extracted by kind   : " + ", ".join(f"{k}={claims_by_kind[k]}" for k in all_kinds)
+    )
+    print(
+        "  flags by kind              : " + ", ".join(f"{k}={flags_by_kind[k]}" for k in all_kinds)
+    )
     return 0
 
 
