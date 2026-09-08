@@ -23,6 +23,8 @@ First cut.
 - Ignore claims inside quotes, backtick spans, blockquotes and fenced code — the agent
   discussing, quoting, or illustrating a claim is not making one. Also ignores long
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
+- `confirm` mode (config key or `CLAIMCHECK_CONFIRM=1`): show `✅ claimcheck — N claims
+  check out` when a turn's claims all verify. Silent by default / when no claims.
 - Recognize "N tests green / N passing / N passed / N/N green" as test claims;
   match Gradle camelCase test tasks (jvmTest, testDebugUnitTest) + gradle check / sbt test.
 - Skip sentences that report on or deny a claim ("it states that... neither happened",

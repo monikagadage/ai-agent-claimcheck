@@ -273,6 +273,32 @@ class TestCli(TmpMixin):
         _, out = self.run_cli(self.payload("All tests pass.", t))
         self.assertEqual(out, "{}")
 
+    def test_confirm_off_by_default_stays_silent(self):
+        t = Transcript().user("x").bash("pytest", "5 passed").edit("a.py")
+        _, out = self.run_cli(self.payload("Tests pass. I updated a.py.", t))
+        self.assertEqual(out, "{}")
+
+    def test_confirm_mode_shows_green_signal(self):
+        (self.dir / ".claimcheck.json").write_text(json.dumps({"confirm": True}))
+        t = Transcript().user("x").bash("pytest", "5 passed").edit("a.py")
+        _, out = self.run_cli(self.payload("Tests pass. I updated a.py.", t))
+        data = json.loads(out)
+        self.assertIn("✅", data["systemMessage"])
+        self.assertIn("check out", data["systemMessage"])
+        self.assertNotIn("decision", data.get("hookSpecificOutput", {}))
+
+    def test_confirm_mode_still_flags_real_issues(self):
+        (self.dir / ".claimcheck.json").write_text(json.dumps({"confirm": True}))
+        t = Transcript().user("x").say("done")
+        _, out = self.run_cli(self.payload("All tests pass.", t))
+        self.assertIn("⚠️", json.loads(out)["systemMessage"])
+
+    def test_confirm_mode_silent_when_no_claims(self):
+        (self.dir / ".claimcheck.json").write_text(json.dumps({"confirm": True}))
+        t = Transcript().user("x").bash("ls")
+        _, out = self.run_cli(self.payload("Here is a summary of the options.", t))
+        self.assertEqual(out, "{}")
+
     def test_text_mode(self):
         t = Transcript().user("x").say("done")
         _, out = self.run_cli(

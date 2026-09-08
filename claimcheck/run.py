@@ -1,4 +1,4 @@
-"""Orchestration: an `AgentTurn` (+ optional config) -> findings.
+"""Orchestration: an `AgentTurn` (+ optional config) -> a Result.
 
 This is the platform-neutral entry point. Adapters produce the turn; the CLI
 handles I/O; this decides what to check.
@@ -6,27 +6,41 @@ handles I/O; this decides what to check.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from .checks import Finding, run_all_checks
-from .claims import extract_claims
+from .claims import Claim, extract_claims
 from .config import load_config
 from .model import AgentTurn
 
 
-def check_turn(turn: AgentTurn, cfg: dict | None = None) -> list[Finding]:
+@dataclass
+class Result:
+    claims: list[Claim] = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
+
+    @property
+    def verified(self) -> bool:
+        """There were claims and every one checked out."""
+        return bool(self.claims) and not self.findings
+
+
+def check_turn(turn: AgentTurn, cfg: dict | None = None) -> Result:
     if not turn.final_message:
-        return []
+        return Result()
     if not turn.observed:
-        return []  # the adapter couldn't see the turn's history -> can't verify -> stay quiet
+        return Result()  # adapter couldn't see the history -> can't verify -> stay quiet
 
     cfg = cfg if cfg is not None else load_config(turn.project_dir)
     claims = extract_claims(turn.final_message)
     if not claims:
-        return []
+        return Result()
 
-    return run_all_checks(
+    findings = run_all_checks(
         turn,
         claims,
         test_patterns=cfg.get("test_patterns"),
         build_patterns=cfg.get("build_patterns"),
         ignore=set(cfg.get("ignore") or []),
     )
+    return Result(claims=claims, findings=findings)

@@ -110,6 +110,9 @@ Wire that into whatever end-of-turn mechanism your agent has.
 | "I updated / created / deleted `path/to/file`" | an edit or an `rm` / `mv` touched that path this session | nothing touched it |
 | "as we agreed / decided / you asked, X" | X's keywords appear in one of **your** earlier messages | X appears only in the agent's own messages |
 
+By default claimcheck is **silent unless something's wrong** — no claims, or all claims
+check out → nothing. Turn on `confirm` (below) if you want a ✅ line when they check out.
+
 A check stays silent unless it's confident. Missing a claim is fine; a false alarm is not.
 
 ## Configuration
@@ -119,6 +122,7 @@ Optional `.claimcheck.json` in your project root:
 ```json
 {
   "strict": false,
+  "confirm": false,
   "ignore": ["agreements"],
   "test_patterns": ["\\bbazel test\\b"],
   "build_patterns": ["\\bbazel build\\b"]
@@ -128,8 +132,12 @@ Optional `.claimcheck.json` in your project root:
 | key | default | meaning |
 | --- | --- | --- |
 | `strict` | `false` | `true` → **block** the turn and send the agent back to make the claim true, instead of just warning |
+| `confirm` | `false` | `true` → also show `✅ claimcheck — N claims check out` when the turn's claims all verify (silent when there are no claims) |
 | `ignore` | `[]` | checks to skip: `tests`, `build`, `edits`, `agreements` |
 | `test_patterns` / `build_patterns` | `[]` | extra regexes for project-specific commands |
+
+`confirm` and `strict` also read from env vars — `CLAIMCHECK_CONFIRM=1`, `CLAIMCHECK_STRICT=1` —
+so you can set a global default in your hook command. A project's `.claimcheck.json` wins.
 
 ## Keep a findings log
 

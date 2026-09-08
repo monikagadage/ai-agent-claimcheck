@@ -8,7 +8,9 @@ Options:
   --text                 print plain-text findings instead of the platform's hook JSON
   --strict-exit          exit 1 when there are unbacked claims (for CI / pre-commit)
 
-Set CLAIMCHECK_LOG=/path/to/file.jsonl to also append every flagged turn there.
+Config (`.claimcheck.json`): `"confirm": true` also shows a ✅ line when the turn's
+claims all check out. `"strict": true` blocks the turn on unbacked claims.
+Set CLAIMCHECK_LOG=/path/to/file.jsonl to append every flagged turn there.
 
 Without --strict-exit the exit code is always 0 — a hook must never wedge a session.
 Internal errors are reported on stderr and the turn proceeds.
@@ -49,24 +51,33 @@ def main(argv=None) -> int:
 
         turn = adapter.parse(payload)
         cfg = load_config(turn.project_dir)
-        findings = run.check_turn(turn, cfg)
-        if not findings:
-            print(empty)
+        result = run.check_turn(turn, cfg)
+
+        if not result.claims:
+            print(empty)  # nothing to check this turn
             return 0
 
-        log.append(turn, findings)
-        text = report.format_findings(findings)
+        if result.findings:
+            log.append(turn, result.findings)
+            text = report.format_findings(result.findings)
+            block = bool(cfg.get("strict"))
+        elif cfg.get("confirm"):
+            text = report.format_confirmation(result.claims)  # green signal
+            block = False
+        else:
+            print(empty)  # claims all check out, quiet mode -> stay silent
+            return 0
 
         if args.text or not hasattr(adapter, "to_hook_output"):
             print(text)
         else:
-            hook_out = adapter.to_hook_output(text, block=bool(cfg.get("strict")))
+            hook_out = adapter.to_hook_output(text, block=block)
             if not hook_out:
                 # the platform's hook can't surface a passive note (e.g. Cursor warn
                 # mode) — put it on stderr so it still shows in the hook log
                 print(text, file=sys.stderr)
             print(json.dumps(hook_out))
-        return 1 if args.strict_exit else 0
+        return 1 if (args.strict_exit and result.findings) else 0
 
     except Exception as exc:  # never break the session over a bug in here
         print(f"claimcheck: skipped ({type(exc).__name__}: {exc})", file=sys.stderr)
