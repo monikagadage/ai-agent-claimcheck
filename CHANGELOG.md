@@ -25,6 +25,9 @@ First cut.
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
 - `confirm` mode (config key or `CLAIMCHECK_CONFIRM=1`): show `✅ claimcheck — N claims
   check out` when a turn's claims all verify. Silent by default / when no claims.
+- Guards for questions ('did the tests pass?'), instructions ('re-run the class,
+  confirm it passes'), and 'we can / to get a real pass' proposals — found by a strict
+  per-turn sweep of 1600+ real turns (`scripts/sweep.py --strict`), which then showed 0.
 - File-edit check now also consults **read-only git** (`status --porcelain`, recent
   `log --name-only`) when the transcript doesn't show the claimed path touched — catches
   "removed the file" when the deletion never landed. Fixed argv, no shell, ~10s timeout,

@@ -59,7 +59,19 @@ _HEDGED = re.compile(
     r"\b(should|would|will|'ll|shall|might|may|could|ought to|supposed to|expected? to"
     r"|hope(?:fully)?|going to|gonna|if|unless|assuming|provided (?:that|you)|as long as"
     r"|once (?:you|the|it|they)|when you|let'?s|let me|let us|before (?:running|we|you|i)"
-    r"|need to (?:check|verify|confirm|make sure)|about to)\b",
+    r"|need to (?:check|verify|confirm|make sure|add|run|write)|about to"
+    r"|we can|you can|i can|we could|can (?:add|run|write|test)|to get a real (?:pass|result))\b",
+    re.I,
+)
+
+# a question or an instruction / to-do, not a report of completed work
+_QUESTION = re.compile(
+    r"\?\s*$|^\W*(?:did|does|do|can|could|should|would|is|are|will|how|what|why|when|where|which|shall)\b",
+    re.I,
+)
+_INSTRUCTION = re.compile(
+    r"^\W*(?:re-?run|run the|check that|check whether|verify|confirm|make sure|ensure|"
+    r"try|consider|evaluate|double-check|sanity-check)\b",
     re.I,
 )
 
@@ -203,10 +215,12 @@ def extract_claims(message: str) -> list[Claim]:
     for sent in sentences:
         low = sent.lower()
         # sentence is quoting, illustrating, reporting, denying, restating the goal,
-        # or talking about a different session — not asserting completed work
+        # asking, instructing, or talking about a different session — not asserting done
         if _HYPOTHETICAL.search(sent) or _REPORTED.search(sent) or _DENIED.search(sent):
             continue
         if _GOAL.search(sent) or _OTHER_SESSION.search(sent):
+            continue
+        if _QUESTION.search(sent) or _INSTRUCTION.search(sent):
             continue
 
         hedged = bool(_HEDGED.search(sent))  # modal / future / conditional
