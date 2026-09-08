@@ -165,10 +165,31 @@ class TestClaims(unittest.TestCase):
         ]:
             self.assertFalse(any(c.kind == "tests" for c in extract_claims(m)), m)
 
+    def test_test_coverage_inventory_is_not_a_claim(self):
+        for m in [
+            "45 pytest tests, all passing — coverage where there was none before.",
+            "Test suite grew from 21 → 60 tests, all passing.",
+            "Jest test suite for the field-matcher — 21/21 passing.",
+            "Added 12 new tests, all green.",
+        ]:
+            self.assertFalse(any(c.kind == "tests" for c in extract_claims(m)), m)
+
+    def test_real_test_result_still_fires(self):
+        self.assertTrue(any(c.kind == "tests" for c in extract_claims("12 tests green.")))
+        self.assertTrue(any(c.kind == "tests" for c in extract_claims("All tests pass now.")))
+
     def test_hedged_outcome_still_keeps_the_edit_claim(self):
         # "should fix the bug" hedges the outcome, not whether the edit happened
         cs = extract_claims("I updated `parser.py`, which should fix the crash.")
         self.assertEqual([c.target for c in cs if c.kind == "edit"], ["parser.py"])
+
+    def test_proposal_to_check_is_not_a_claim(self):
+        for m in [
+            "Now let's sanity-check the file compiles cleanly before running anything.",
+            "Let me verify the tests pass first.",
+            "Before running against real APIs, I need to check it compiles.",
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
 
 
 # --------------------------------------------------------------------------- tests check
@@ -285,7 +306,7 @@ class TestCli(TmpMixin):
         self.assertEqual((code, out), (0, "{}"))
 
     def test_warn_only_by_default(self):
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(self.payload("All tests pass.", t))
         data = json.loads(out)
         self.assertIn("systemMessage", data)
@@ -295,19 +316,19 @@ class TestCli(TmpMixin):
 
     def test_strict_blocks(self):
         (self.dir / ".claimcheck.json").write_text(json.dumps({"strict": True}))
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(self.payload("All tests pass.", t))
         data = json.loads(out)
         self.assertEqual(data["hookSpecificOutput"]["decision"], "block")
         self.assertIn("additionalContext", data["hookSpecificOutput"])
 
     def test_stop_hook_active_is_noop(self):
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(self.payload("All tests pass.", t, stop_hook_active=True))
         self.assertEqual(out, "{}")
 
     def test_no_final_message_is_noop(self):
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(self.payload("", t))
         self.assertEqual(out, "{}")
 
@@ -317,7 +338,7 @@ class TestCli(TmpMixin):
 
     def test_ignore_config(self):
         (self.dir / ".claimcheck.json").write_text(json.dumps({"ignore": ["tests"]}))
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(self.payload("All tests pass.", t))
         self.assertEqual(out, "{}")
 
@@ -337,7 +358,7 @@ class TestCli(TmpMixin):
 
     def test_confirm_mode_still_flags_real_issues(self):
         (self.dir / ".claimcheck.json").write_text(json.dumps({"confirm": True}))
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(self.payload("All tests pass.", t))
         self.assertIn("⚠️", json.loads(out)["systemMessage"])
 
@@ -347,8 +368,18 @@ class TestCli(TmpMixin):
         _, out = self.run_cli(self.payload("Here is a summary of the options.", t))
         self.assertEqual(out, "{}")
 
+    def test_no_tool_activity_is_noop(self):
+        # a research / summary session that ran nothing -> claims refer elsewhere
+        t = Transcript().user("summarise my repos").say("done")
+        _, out = self.run_cli(self.payload("job-autofill: 60 tests, all passing.", t))
+        self.assertEqual(out, "{}")
+
+    def test_python_import_smoke_check_backs_compiles_claim(self):
+        t = Transcript().user("x").bash('python -c "import mypkg"', "")
+        self.assertEqual(self.findings("The code is wired up and compiles cleanly.", t), [])
+
     def test_text_mode(self):
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         _, out = self.run_cli(
             self.payload("All tests pass.", t), argv=("--from", "claude-code", "--text")
         )
@@ -356,7 +387,7 @@ class TestCli(TmpMixin):
         self.assertNotIn("{", out)
 
     def test_strict_exit_code(self):
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         code, _ = self.run_cli(
             self.payload("All tests pass.", t), argv=("--from", "claude-code", "--strict-exit")
         )
@@ -372,7 +403,7 @@ class TestCli(TmpMixin):
         logfile = self.dir / "log.jsonl"
         os.environ["CLAIMCHECK_LOG"] = str(logfile)
         self.addCleanup(os.environ.pop, "CLAIMCHECK_LOG", None)
-        t = Transcript().user("x").say("done")
+        t = Transcript().user("x").say("done").bash("ls")
         self.run_cli(self.payload("All tests pass.", t))
         lines = logfile.read_text().splitlines()
         self.assertEqual(len(lines), 1)
@@ -439,7 +470,9 @@ class TestGenericAdapter(unittest.TestCase):
     def test_generic_via_cli(self):
         buf, err = io.StringIO(), io.StringIO()
         old = sys.stdin
-        sys.stdin = io.StringIO(json.dumps({"final_message": "All tests pass.", "commands": []}))
+        sys.stdin = io.StringIO(
+            json.dumps({"final_message": "All tests pass.", "commands": [{"text": "ls"}]})
+        )
         try:
             with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
                 code = cli_main(["--from", "generic"])

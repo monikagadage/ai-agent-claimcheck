@@ -25,6 +25,12 @@ First cut.
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
 - `confirm` mode (config key or `CLAIMCHECK_CONFIRM=1`): show `✅ claimcheck — N claims
   check out` when a turn's claims all verify. Silent by default / when no claims.
+- `scripts/sweep.py` — run claimcheck over past Claude Code transcripts to hunt false
+  positives (swept 1600+ real turns; 0 flagged after the guards below).
+- Skip turns with no tool activity (research/summary sessions), test-coverage inventory
+  ("45 pytest tests", "suite grew 21 → 60"), proposals ("let's check it compiles"),
+  and "as an example" mentions. Recognize interpreted-language compile checks
+  (`python -c import`, `py_compile`, `node --check`, `ruby -c`).
 - More guards: skip hedged / future / conditional claims ("tests should pass", "will
   compile if…"), restated goals ("you asked me to…", "the task was…"), work from a
   different session ("previously…", "in an earlier session"), transitive "passes" ("test

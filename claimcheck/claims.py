@@ -23,7 +23,19 @@ _PAREN = re.compile(r"\(([^()\n]{25,})\)")
 # a sentence carrying one of these is describing / illustrating, not asserting
 _HYPOTHETICAL = re.compile(
     r"\b(for example|for instance|e\.g\.|such as|imagine|say that|would (?:be )?(?:get |be )?flag|"
-    r"gets? flagged|is flagged|be flagged|hypothetical)",
+    r"gets? flagged|is flagged|be flagged|hypothetical"
+    r"|as an?\s+[\w*_-]*\s*example|an?\s+[\w*_-]*\s*example of|wrote\s+[^.\n]{0,40}\s+as an? [\w*_-]*\s*example)",
+    re.I,
+)
+
+# describing test *coverage* as a property of a codebase, not reporting a run
+_INVENTORY = re.compile(
+    r"\btest\s+suite\s+(?:for\b|grew\b|expanded|went from|now (?:has|covers)|of \d)"
+    r"|\b\d+\s*(?:→|->|to)\s*\d+\s+tests?\b"
+    r"|\b\d+\s+(?:pytest|jest|vitest|mocha|rspec|unit|integration)\s+tests?\b"
+    r"|\bwhere there (?:was|were)\s+(?:none|no tests?|nothing)\b"
+    r"|\b(?:added|wrote|created|now has)\s+\d+\s+(?:new\s+)?tests?\b"
+    r"|\btest\s+coverage\s+(?:for|of|now|went|grew)",
     re.I,
 )
 
@@ -42,11 +54,12 @@ _DENIED = re.compile(
     re.I,
 )
 
-# modal / future / conditional — the sentence hedges the claim rather than asserting it
+# modal / future / conditional / proposal — the sentence hedges or proposes the claim
 _HEDGED = re.compile(
     r"\b(should|would|will|'ll|shall|might|may|could|ought to|supposed to|expected? to"
     r"|hope(?:fully)?|going to|gonna|if|unless|assuming|provided (?:that|you)|as long as"
-    r"|once (?:you|the|it|they)|when you)\b",
+    r"|once (?:you|the|it|they)|when you|let'?s|let me|let us|before (?:running|we|you|i)"
+    r"|need to (?:check|verify|confirm|make sure)|about to)\b",
     re.I,
 )
 
@@ -183,6 +196,7 @@ def extract_claims(message: str) -> list[Claim]:
             TESTS_RE.search(sent)
             and not hedged
             and not _TRANSITIVE_PASS.search(sent)
+            and not _INVENTORY.search(sent)
             and "did the tests pass" not in low
             and not low.startswith(("if ", "do the", "should ", "make sure", "run the", "once "))
         ):

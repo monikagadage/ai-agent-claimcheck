@@ -30,6 +30,8 @@ def check_turn(turn: AgentTurn, cfg: dict | None = None) -> Result:
         return Result()
     if not turn.observed:
         return Result()  # adapter couldn't see the history -> can't verify -> stay quiet
+    if not turn.commands and not turn.edits:
+        return Result()  # no tool activity this turn -> claims refer elsewhere, nothing to check
 
     cfg = cfg if cfg is not None else load_config(turn.project_dir)
     claims = extract_claims(turn.final_message)
