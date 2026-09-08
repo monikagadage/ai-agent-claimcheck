@@ -25,6 +25,10 @@ First cut.
   parenthetical asides and "for example / e.g. / such as" sentences. (dogfood FPs)
 - `confirm` mode (config key or `CLAIMCHECK_CONFIRM=1`): show `✅ claimcheck — N claims
   check out` when a turn's claims all verify. Silent by default / when no claims.
+- File-edit check now also consults **read-only git** (`status --porcelain`, recent
+  `log --name-only`) when the transcript doesn't show the claimed path touched — catches
+  "removed the file" when the deletion never landed. Fixed argv, no shell, ~10s timeout,
+  failures swallowed. Disable with `.claimcheck.json` `{"git": false}`.
 - Wider edit-claim detection: verb-first ("Created Fort.kt", "- Deleted bun.lockb"),
   "the new X.kt", "X has been created", multi-verb. Test/build claims now match through
   a filename that names a file before the verb ("the tests in auth_test.py pass").

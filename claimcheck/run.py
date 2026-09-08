@@ -44,5 +44,6 @@ def check_turn(turn: AgentTurn, cfg: dict | None = None) -> Result:
         test_patterns=cfg.get("test_patterns"),
         build_patterns=cfg.get("build_patterns"),
         ignore=set(cfg.get("ignore") or []),
+        use_git=cfg.get("git", True),
     )
     return Result(claims=claims, findings=findings)

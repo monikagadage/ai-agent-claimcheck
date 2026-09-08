@@ -107,7 +107,7 @@ Wire that into whatever end-of-turn mechanism your agent has.
 | --- | --- | --- |
 | "tests pass", "all green", "suite is passing" | a test-runner command ran **and** exited 0 (pytest, jest/vitest, `go test`, `cargo test`, `mvn`/`gradle test`, rspec, `dotnet test`, …) | no test command ran, or the only one failed |
 | "builds", "compiles", "no type errors", "typecheck passes" | a build/typecheck command ran and exited 0 (`tsc`, `mypy`, `go build`, `cargo build`, `javac`, `npm run build`, …) | none ran, or the only one failed |
-| "I updated / created / deleted `path/to/file`" | an edit or an `rm` / `mv` touched that path this session | nothing touched it |
+| "I updated / created / deleted `path/to/file`" (also "Created `X.kt`", "the new `Y.kt`", "`Z` has been created") | an edit / `rm` / `mv` touched that path this session, **or** `git status` / recent commits show it changed | nothing in the session or git touched it |
 | "as we agreed / decided / you asked, X" | X's keywords appear in one of **your** earlier messages | X appears only in the agent's own messages |
 
 By default claimcheck is **silent unless something's wrong** — no claims, or all claims
@@ -123,6 +123,7 @@ Optional `.claimcheck.json` in your project root:
 {
   "strict": false,
   "confirm": false,
+  "git": true,
   "ignore": ["agreements"],
   "test_patterns": ["\\bbazel test\\b"],
   "build_patterns": ["\\bbazel build\\b"]
@@ -133,6 +134,7 @@ Optional `.claimcheck.json` in your project root:
 | --- | --- | --- |
 | `strict` | `false` | `true` → **block** the turn and send the agent back to make the claim true, instead of just warning |
 | `confirm` | `false` | `true` → also show `✅ claimcheck — N claims check out` when the turn's claims all verify (silent when there are no claims) |
+| `git` | `true` | `false` → don't shell out to read-only `git` for the file-edit check (regex/transcript evidence only) |
 | `ignore` | `[]` | checks to skip: `tests`, `build`, `edits`, `agreements` |
 | `test_patterns` / `build_patterns` | `[]` | extra regexes for project-specific commands |
 

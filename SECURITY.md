@@ -7,7 +7,11 @@
 - reads the hook payload on stdin and the session transcript file named in it
 - reads an optional `.claimcheck.json` from the project directory
 - writes a JSON result to stdout and diagnostics to stderr
-- makes **no** network calls, spawns **no** subprocesses, and loads **no** models
+- makes **no** network calls and loads **no** models
+- runs exactly one kind of subprocess: **read-only `git`** (`rev-parse`, `status
+  --porcelain`, `log --name-only`) in the project directory, for the file-edit check.
+  A fixed argv — never a shell, never values from the transcript or config. ~10s
+  timeout, any failure is swallowed. Disable with `.claimcheck.json` `{"git": false}`.
 
 It never executes commands from the transcript or from config. A malicious transcript
 or config can at worst cause `claimcheck` to print nothing (it catches all exceptions and

@@ -1,13 +1,15 @@
 """The four v1 checks. Each takes (turn, claims) and returns Findings.
 
-Deterministic only: no network, no model. A check stays silent unless it is
-confident a claim is unbacked. Operates purely on the platform-neutral
-`AgentTurn` — nothing in here knows which agent produced it.
+Deterministic — no network, no model. A check stays silent unless it is confident a
+claim is unbacked. The only subprocess it ever runs is read-only `git` (for the edits
+check), and only if the project is a git repo; disable with `.claimcheck.json`
+`{"git": false}`.
 """
 
 from __future__ import annotations
 
 import re
+import subprocess
 from dataclasses import dataclass
 
 from .claims import Claim
@@ -121,26 +123,78 @@ def check_build(turn: AgentTurn, claims: list[Claim], patterns: list[str]) -> li
     return [Finding("build", c.text, "the only build command this session failed", ev) for c in cs]
 
 
-def check_edits(turn: AgentTurn, claims: list[Claim]) -> list[Finding]:
+def check_edits(turn: AgentTurn, claims: list[Claim], use_git: bool = True) -> list[Finding]:
     cs = [c for c in claims if c.kind == "edit" and c.target]
     if not cs:
         return []
     touched = [e.path for e in turn.edits if _looks_like_file(e.path)]
+
+    git_paths: list[str] | None = None  # computed lazily, once
+    git_tried = False
+
     findings = []
     for c in cs:
-        if not _path_touched(c.target, touched):
-            names = _unique(_basename(p) for p in touched)
-            ev = (
-                (
-                    "files edited this session: "
-                    + ", ".join(names[:5])
-                    + ("…" if len(names) > 5 else "")
-                )
-                if names
-                else "no files were edited this session"
-            )
-            findings.append(Finding("edit", c.text, f"nothing modified `{c.target}`", ev))
+        if _path_touched(c.target, touched):
+            continue
+        if use_git and not git_tried:
+            git_paths = _git_touched(turn.project_dir)
+            git_tried = True
+        if git_paths and _path_touched(c.target, git_paths):
+            continue  # working tree or a recent commit shows this file changed
+
+        names = _unique(_basename(p) for p in touched)
+        where = "the session or git" if git_paths is not None else "this session"
+        ev = (
+            "files edited this session: " + ", ".join(names[:5]) + ("…" if len(names) > 5 else "")
+            if names
+            else "nothing was edited this session"
+        )
+        findings.append(Finding("edit", c.text, f"nothing in {where} modified `{c.target}`", ev))
     return findings
+
+
+def _git_touched(project_dir: str) -> list[str] | None:
+    """Paths changed in the working tree or the last few commits.
+
+    Returns None when it's not a git repo, git is missing, or anything goes wrong —
+    the caller then falls back to transcript evidence only. Read-only; ~10s ceiling.
+    """
+    if not project_dir:
+        return None
+    base = ["git", "-C", project_dir]
+    try:
+        r = subprocess.run(
+            [*base, "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if r.returncode != 0 or r.stdout.strip() != "true":
+            return None
+
+        paths: set[str] = set()
+        st = subprocess.run(
+            [*base, "status", "--porcelain"], capture_output=True, text=True, timeout=5
+        )
+        for line in st.stdout.splitlines():
+            frag = line[3:].strip().strip('"')
+            for p in frag.split(" -> "):  # renames: "old -> new"
+                if p.strip():
+                    paths.add(p.strip().strip('"'))
+
+        lg = subprocess.run(
+            [*base, "log", "-8", "--name-only", "--format="],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        for line in lg.stdout.splitlines():
+            if line.strip():
+                paths.add(line.strip())
+
+        return list(paths)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 def check_agreements(turn: AgentTurn, claims: list[Claim]) -> list[Finding]:
@@ -169,7 +223,12 @@ def check_agreements(turn: AgentTurn, claims: list[Claim]) -> list[Finding]:
 
 
 def run_all_checks(
-    turn: AgentTurn, claims: list[Claim], test_patterns=None, build_patterns=None, ignore=()
+    turn: AgentTurn,
+    claims: list[Claim],
+    test_patterns=None,
+    build_patterns=None,
+    ignore=(),
+    use_git: bool = True,
 ) -> list[Finding]:
     tp = TEST_RUNNER_PATTERNS + list(test_patterns or [])
     bp = BUILD_PATTERNS + list(build_patterns or [])
@@ -179,7 +238,7 @@ def run_all_checks(
     if "build" not in ignore:
         out += check_build(turn, claims, bp)
     if "edits" not in ignore:
-        out += check_edits(turn, claims)
+        out += check_edits(turn, claims, use_git=use_git)
     if "agreements" not in ignore:
         out += check_agreements(turn, claims)
     return out

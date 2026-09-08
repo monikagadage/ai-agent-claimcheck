@@ -25,6 +25,7 @@ from pathlib import Path
 DEFAULT = {
     "strict": False,
     "confirm": False,
+    "git": True,
     "ignore": [],
     "test_patterns": [],
     "build_patterns": [],

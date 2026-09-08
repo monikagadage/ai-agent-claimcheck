@@ -301,6 +301,39 @@ class TestEditsCheck(TmpMixin):
         t = Transcript().user("x").bash("rm old_module.py")
         self.assertEqual(self.findings("I deleted old_module.py.", t), [])
 
+    def test_git_working_tree_backs_edit_claim(self):
+        import subprocess
+
+        run = lambda *a: subprocess.run(  # noqa: E731
+            ["git", "-C", str(self.dir), *a], capture_output=True, text=True, check=True
+        )
+        run("init", "-q")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        (self.dir / "auth.py").write_text("x = 1\n")  # created, not staged — like bun.lockb
+        # transcript shows a different file edited; git shows auth.py in the working tree
+        t = Transcript().user("x").edit("other.py")
+        self.assertEqual(self.findings("I created auth.py.", t), [])
+
+    def test_git_absent_file_still_flagged(self):
+        import subprocess
+
+        subprocess.run(["git", "-C", str(self.dir), "init", "-q"], check=True)
+        t = Transcript().user("x").edit("other.py")
+        f = self.findings("I removed the obsolete bun.lockb file.", t)
+        self.assertEqual([x.kind for x in f], ["edit"])
+        self.assertIn("git", f[0].reason)
+
+    def test_git_check_disabled_by_config(self):
+        import subprocess
+
+        subprocess.run(["git", "-C", str(self.dir), "init", "-q"], check=True)
+        (self.dir / "auth.py").write_text("x = 1\n")
+        (self.dir / ".claimcheck.json").write_text(json.dumps({"git": False}))
+        t = Transcript().user("x").say("done").bash("ls")
+        _, out = self.run_cli(self.payload("I created auth.py.", t))
+        self.assertIn("nothing in this session", json.loads(out)["systemMessage"])
+
 
 # --------------------------------------------------------------------------- agreements check
 
