@@ -19,10 +19,19 @@ what the session actually *shows*:
 Deterministic — no LLM, no network, no API cost. It reads the transcript your agent
 already writes. **Warn-only by default**: it surfaces the unbacked claims and lets you decide.
 
-```
+<!-- demo/demo.gif — generate with `vhs demo/demo.tape`; see demo/README.md -->
+
+```console
+$ claimcheck < turn.json          # agent: "All tests pass. I removed the obsolete bun.lockb."
+
 ⚠️  claimcheck — 2 claims not backed by this session:
-  • "All tests pass."          → no test command ran this session
-  • "I refactored auth.py."    → nothing in the session or git modified `auth.py`
+  • "All tests pass."                        → no test command ran this session
+  • "I also removed the obsolete bun.lockb." → nothing in the session or git modified
+                                               `bun.lockb`  (files edited: config.ts)
+
+$ claimcheck < turn.json          # after actually running the tests + deleting the file
+
+✅  claimcheck — 2 claims check out (tests, file edits)
 ```
 
 If nothing is wrong — no claims, or every claim checks out — it stays completely silent.
@@ -188,12 +197,33 @@ Read-only. Prints every turn it would have flagged, plus a per-claim-kind breakd
 
 ## How it works
 
-The agent's `Stop` / `stop` hook fires when it tries to end a turn. The adapter reads the
-final message + the session transcript (commands and their exit status, file edits, your
-messages) into a neutral `AgentTurn`. The core extracts claims (regex), runs the four
-checks, and prints the platform's hook result. Any internal error → prints nothing, exits
-0. **The only subprocess it ever runs is read-only `git`** (fixed argv, never a shell) —
-see [SECURITY.md](SECURITY.md).
+```mermaid
+flowchart LR
+    A["agent ends a turn"] --> HOOK["Stop / stop hook"]
+
+    subgraph adapter ["adapter — the only platform-specific code"]
+        direction TB
+        AD["claude_code · cursor · generic"]
+    end
+    HOOK --> AD
+    TX[("session transcript<br/>commands + exit status<br/>file edits · your messages")] --> AD
+
+    subgraph core ["core — platform-neutral"]
+        direction TB
+        TURN["AgentTurn"] --> CLAIMS["claims.py<br/>extract claims<br/>(~12 FP guards)"]
+        CLAIMS --> CHECKS["checks.py<br/>tests · build · edits · agreements<br/>(+ read-only git)"]
+    end
+    AD --> TURN
+
+    CHECKS --> DECIDE{"any claim<br/>unbacked?"}
+    DECIDE -- no --> SILENT["silent<br/>(or ✅ in confirm mode)"]
+    DECIDE -- yes --> WARN["⚠️ warn<br/>· block if strict<br/>· append to CLAIMCHECK_LOG"]
+```
+
+The adapter reads the final message + the session transcript into a neutral `AgentTurn`.
+The core extracts claims (regex) and runs the four checks. Any internal error → prints
+nothing, exits 0, turn proceeds. **The only subprocess it ever runs is read-only `git`**
+(fixed argv, never a shell) — see [SECURITY.md](SECURITY.md).
 
 ```
 claimcheck/
