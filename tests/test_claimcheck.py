@@ -101,6 +101,15 @@ class TestClaims(unittest.TestCase):
         cs = extract_claims("I updated `auth.py` for the fix.")
         self.assertEqual([c.target for c in cs if c.kind == "edit"], ["auth.py"])
 
+    def test_short_quoted_claim_example_is_not_a_claim(self):
+        # a quoted phrase that *is* a claim = an example, even under 20 chars
+        for m in [
+            'still counts as "I updated parser.py".',
+            'the tool flags "all tests pass" when nothing ran.',
+            'e.g. "12 tests green" gets checked.',
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
+
     def test_hypothetical_sentence_is_not_a_claim(self):
         for m in [
             "For example, if I updated auth.py it would be flagged.",

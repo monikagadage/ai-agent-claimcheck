@@ -74,13 +74,28 @@ _TRANSITIVE_PASS = re.compile(
 )
 
 
+# a quoted span whose *content* looks like a claim is an example being quoted, not an
+# assertion — mask it regardless of length ("I updated parser.py", "all tests pass")
+_QUOTED_CLAIMISH = re.compile(
+    r"\bI\s+(?:updated|created|added|removed|deleted|edited|fixed|wrote|refactored|renamed)\s+\S*\.\w"
+    r"|\b(?:all\s+|the\s+)?tests?\s+(?:pass|are\s+green|passing|green)\b"
+    r"|\ball\s+green\b|\b\d+\s+tests?\s+(?:green|passing|passed)\b"
+    r"|\b(?:it\s+|the\s+build\s+)?(?:builds|compiles)\s+(?:clean|fine|now|successfully)"
+    r"|\bno\s+(?:type|compile|compilation)\s+errors\b"
+    r"|\bas\s+(?:we|you)\s+(?:agreed|decided|discussed|asked)\b",
+    re.I,
+)
+
+
 def _mask_quoted(message: str) -> str:
     message = _FENCE.sub(" ", message)
     message = _BLOCKQUOTE.sub(" ", message)
 
     def repl(m: re.Match) -> str:
         inner = next(g for g in m.groups() if g is not None)
-        if " " in inner.strip() and len(inner) >= 20:
+        if _QUOTED_CLAIMISH.search(inner):
+            return " "
+        if " " in inner.strip() and len(inner) >= 18:
             return " "
         return m.group(0)
 
