@@ -4,9 +4,10 @@ Thanks for taking a look. This is a small, focused tool and it should stay that 
 
 ## Design rules (please read before opening a PR)
 
-1. **Deterministic core.** `claimcheck/claims.py` and `claimcheck/checks.py` make no
-   network calls and load no models. The optional LLM layer (roadmap) will live behind a
-   clear opt-in and never be the default.
+1. **Deterministic core.** No network, no models. The only subprocess is read-only `git`
+   in the file-edit check (fixed argv, never a shell) — anything heavier needs a strong
+   case and probably a config gate. The LLM layer on the roadmap will be opt-in, never
+   the default.
 2. **The core is platform-neutral.** `claims.py` / `checks.py` / `run.py` only ever see an
    `AgentTurn` (`claimcheck/model.py`). Anything platform-specific — parsing a transcript,
    shaping hook output — lives in `claimcheck/adapters/<platform>.py`.
