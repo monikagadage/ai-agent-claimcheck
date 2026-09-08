@@ -1,0 +1,23 @@
+name: plugin-manifest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate .claude-plugin manifests are well-formed JSON
+        run: |
+          python3 -c "import json,sys; json.load(open('.claude-plugin/plugin.json')); json.load(open('.claude-plugin/marketplace.json')); json.load(open('hooks/hooks.json')); print('manifests OK')"
+      - name: Hook shim runs and exits 0 on empty input
+        run: |
+          out=$(echo '{}' | python3 scripts/hook.py); code=$?
+          test "$code" = "0" && test "$out" = "{}" && echo "hook shim OK"
