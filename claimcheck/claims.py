@@ -29,13 +29,47 @@ _HYPOTHETICAL = re.compile(
 
 # the sentence is *reporting on* or *denying* a claim, not making one
 _REPORTED = re.compile(
-    r"\b(it (?:states|says|claims|asserts|reads)|the (?:message|summary|reply|response|agent|model|note)"
-    r"\s+(?:states|says|claims|asserts)|claims that|asserts that|according to)\b",
+    r"\b(it (?:states|says|claims|asserts|reads)"
+    r"|the (?:message|summary|reply|response|agent|model|note|readme|read ?me|doc|docs"
+    r"|documentation|spec|comment|changelog|pr|pull request|issue|ticket|commit(?: message)?)"
+    r"\s+(?:states|says|claims|asserts|reads|notes)"
+    r"|claims that|asserts that|according to)\b",
     re.I,
 )
 _DENIED = re.compile(
     r"\b(neither|none of (?:that|it|this)|didn'?t|did not|was ?n'?t|were ?n'?t|"
     r"never (?:ran|happened|did)|not actually|no test(?:s| command)? (?:ran|was run))\b",
+    re.I,
+)
+
+# modal / future / conditional — the sentence hedges the claim rather than asserting it
+_HEDGED = re.compile(
+    r"\b(should|would|will|'ll|shall|might|may|could|ought to|supposed to|expected? to"
+    r"|hope(?:fully)?|going to|gonna|if|unless|assuming|provided (?:that|you)|as long as"
+    r"|once (?:you|the|it|they)|when you)\b",
+    re.I,
+)
+
+# restating the objective, not reporting it done
+_GOAL = re.compile(
+    r"\b(you (?:asked|wanted|requested|need(?:ed)?|told me)"
+    r"|the (?:task|goal|ask|objective|request|aim|point) (?:is|was|here)"
+    r"|what you (?:asked|wanted|need)|your request (?:is|was)|the plan (?:is|was) to)\b",
+    re.I,
+)
+
+# work from a different session — claimcheck only sees the current transcript
+_OTHER_SESSION = re.compile(
+    r"\b(previously|earlier today|earlier in the (?:day|week)"
+    r"|(?:in (?:an?|the|our) )?(?:previous|prior|earlier|last) (?:session|chat|conversation|run|turn))\b",
+    re.I,
+)
+
+# "passes" meaning "hands over", not "succeeds": test passes a mock, helper passes the config
+_TRANSITIVE_PASS = re.compile(
+    r"\b(test|method|function|helper|call|it|this|which|that)\s+passes\s+"
+    r"(?:a|an|the|its|this|that|these|those|`)\s*"
+    r"(?!(?:test|tests|check|checks|suite|build|ci)\b)\w",
     re.I,
 )
 
@@ -121,16 +155,27 @@ def extract_claims(message: str) -> list[Claim]:
     sentences = [s.strip() for s in _SENT_SPLIT.split(message) if s.strip()]
     for sent in sentences:
         low = sent.lower()
+        # sentence is quoting, illustrating, reporting, denying, restating the goal,
+        # or talking about a different session — not asserting completed work
         if _HYPOTHETICAL.search(sent) or _REPORTED.search(sent) or _DENIED.search(sent):
             continue
+        if _GOAL.search(sent) or _OTHER_SESSION.search(sent):
+            continue
+
+        hedged = bool(_HEDGED.search(sent))  # modal / future / conditional
+
         if (
             TESTS_RE.search(sent)
+            and not hedged
+            and not _TRANSITIVE_PASS.search(sent)
             and "did the tests pass" not in low
             and not low.startswith(("if ", "do the", "should ", "make sure", "run the", "once "))
         ):
             claims.append(Claim("tests", sent))
-        if BUILD_RE.search(sent) and not low.startswith(
-            ("if ", "does it", "should ", "make sure", "verify ")
+        if (
+            BUILD_RE.search(sent)
+            and not hedged
+            and not low.startswith(("if ", "does it", "should ", "make sure", "verify "))
         ):
             claims.append(Claim("build", sent))
         for m in EDIT_RE.finditer(sent):

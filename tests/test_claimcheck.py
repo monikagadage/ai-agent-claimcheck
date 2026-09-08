@@ -119,8 +119,47 @@ class TestClaims(unittest.TestCase):
             "The summary claims that all tests pass, but no test command ran.",
             "I did not run the tests, though the code looks right.",
             "I didn't update config.py in the end.",
+            "The README says the tests pass on CI.",
         ]:
             self.assertEqual(extract_claims(m), [], m)
+
+    def test_hedged_and_future_claims_are_not_claims(self):
+        for m in [
+            "The tests should pass now.",
+            "This will compile once you install the SDK.",
+            "The build would succeed if the proto files were regenerated.",
+            "Assuming the migration ran, all tests pass.",
+            "Hopefully the type check passes.",
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
+
+    def test_restating_the_goal_is_not_a_claim(self):
+        for m in [
+            "You asked me to make the tests pass and get the build green.",
+            "The task was to get all tests passing.",
+            "The goal is a clean build with no type errors.",
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
+
+    def test_other_session_work_is_not_a_claim(self):
+        for m in [
+            "Previously I updated auth.py and the tests passed.",
+            "In an earlier session we ran the full suite and it passed.",
+            "Earlier today the build compiled cleanly.",
+        ]:
+            self.assertEqual(extract_claims(m), [], m)
+
+    def test_transitive_passes_is_not_a_test_claim(self):
+        for m in [
+            "This test passes a mock database to the constructor.",
+            "The helper passes the config through to the client.",
+        ]:
+            self.assertFalse(any(c.kind == "tests" for c in extract_claims(m)), m)
+
+    def test_hedged_outcome_still_keeps_the_edit_claim(self):
+        # "should fix the bug" hedges the outcome, not whether the edit happened
+        cs = extract_claims("I updated `parser.py`, which should fix the crash.")
+        self.assertEqual([c.target for c in cs if c.kind == "edit"], ["parser.py"])
 
 
 # --------------------------------------------------------------------------- tests check
